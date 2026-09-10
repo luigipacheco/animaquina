@@ -139,8 +139,8 @@ def build_robot_library(out_dir: pathlib.Path, version: str, suffix: str) -> Non
     stem = f"animaquina-robots-{version}" + (f"-{suffix}" if suffix else "")
     out = out_dir / f"{stem}.zip"
     names = write_zip(out, members)
-    print(f"
-  {out}")
+    print()
+    print(f"  {out}")
     print(f"  {out.stat().st_size / 1048576:.2f} MB, {len(names)} files")
 
 
@@ -222,6 +222,9 @@ def main() -> int:
 
     print(f"\n  {zip_path}")
     print(f"  {zip_path.stat().st_size / 1048576:.2f} MB, {len(names)} files")
+    if args.robots:
+        build_robot_library(args.out, version, args.suffix)
+
     print("\nInstall: Blender > Preferences > Add-ons > Install from Disk")
     return 0
 
