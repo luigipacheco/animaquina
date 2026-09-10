@@ -99,7 +99,14 @@ Standalone **CMake 3.29.6** (must be < 3.30 — see note in build_urrtde.bat) an
    ```powershell
    python -m pip install --target vendor_py_cp313 --only-binary=:all: `
      --python-version 3.13 --implementation cp --abi cp313 --platform win_amd64 `
-     mujoco==3.6.0 paramiko==4.0.0 glfw==2.10.0 PyOpenGL==3.1.10 invoke==2.2.1 numpy==2.4.4
+     mujoco==3.6.0 paramiko==4.0.0 glfw==2.10.0 PyOpenGL==3.1.10 invoke==2.2.1
+   ```
+   **No numpy.** Blender bundles its own, and `_bootstrap_import_paths()` puts
+   `vendor_py` ahead of Blender's site-packages - so a numpy here *shadows*
+   Blender's, which is how you get a numpy loaded under an interpreter it was
+   not built for. mujoco and the exporters use Blender's copy. Add it back only
+   if something actually fails, and pin it to Blender's version if you do.
+   ```powershell
    ```
    (Running Blender's own python without those flags works too, and is what the
    original recipe did - but it ties this step to a machine with Blender 5.2.)

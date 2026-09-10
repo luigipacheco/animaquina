@@ -27,6 +27,9 @@ import zipfile
 REPO = pathlib.Path(__file__).resolve().parent.parent
 PKG = REPO / "animaquina"
 DOCS = ("LICENSE", "SAFETY.md", "THIRD-PARTY-NOTICES.md")
+ROBOTS = REPO / "assets" / "robots"
+# Shipped beside the rig files: the rig work is CC-BY-4.0 over manufacturer CAD.
+ROBOT_DOCS = ("LICENSES/CC-BY-4.0.txt", "THIRD-PARTY-NOTICES.md")
 
 # Blender ships a fixed Python per release, and the compiled .pyd files in
 # vendor_py only load on the matching one. Mismatches fail at import with
@@ -98,6 +101,49 @@ def check_vendor_abi(vendor: pathlib.Path, blender_min: str) -> None:
              f"       --vendor-py for a pure-Python build.")
 
 
+def write_zip(out_path: pathlib.Path, members: list[tuple[pathlib.Path, str]]) -> list[str]:
+    """Write members as (source file, arcname) and verify the result."""
+    if out_path.exists():
+        out_path.unlink()
+    with zipfile.ZipFile(out_path, "w", zipfile.ZIP_DEFLATED) as z:
+        for src, arc in members:
+            z.write(src, arc)
+    with zipfile.ZipFile(out_path) as z:
+        if z.testzip() is not None:
+            fail(f"{out_path.name} failed its integrity check")
+        return z.namelist()
+
+
+def build_robot_library(out_dir: pathlib.Path, version: str, suffix: str) -> None:
+    """Pack assets/robots into the separate robot-library release asset.
+
+    Kept out of the add-on zip deliberately: ~70 MB that would ride along on
+    every patch release, under different licence terms from the code.
+    """
+    if not ROBOTS.is_dir():
+        fail(f"no robot assets at {ROBOTS}")
+    members = []
+    for f in sorted(ROBOTS.rglob("*")):
+        # .blend1/.blend2 are Blender's own backups, never ship them
+        if f.is_file() and f.suffix not in {".blend1", ".blend2"} and not f.name.endswith("~"):
+            members.append((f, ("robots" / f.relative_to(ROBOTS)).as_posix()))
+    if not any(a.endswith(".blend") for _, a in members):
+        fail("no .blend found in assets/robots - nothing to ship")
+    for rel in ROBOT_DOCS:
+        src = REPO / rel
+        if src.is_file():
+            members.append((src, pathlib.Path(rel).name))
+        else:
+            print(f"  ! {rel} missing, not bundled with the robot library")
+
+    stem = f"animaquina-robots-{version}" + (f"-{suffix}" if suffix else "")
+    out = out_dir / f"{stem}.zip"
+    names = write_zip(out, members)
+    print(f"
+  {out}")
+    print(f"  {out.stat().st_size / 1048576:.2f} MB, {len(names)} files")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Pack the Animaquina add-on into a Blender zip.")
     ap.add_argument("--vendor-py", type=pathlib.Path, default=None,
@@ -108,10 +154,18 @@ def main() -> int:
                          "targets the ABI of the vendor_py you normally ship; use this to "
                          "produce a build for a different Blender/Python series")
     ap.add_argument("--out", type=pathlib.Path, default=REPO / "dist", help="output directory")
+    ap.add_argument("--robots", action="store_true",
+                    help="also pack assets/robots into the separate robot-library asset")
+    ap.add_argument("--only-robots", action="store_true",
+                    help="pack only the robot library, skipping the add-on")
     args = ap.parse_args()
 
     manifest = read_manifest()
     version = str(manifest["version"])
+    if args.only_robots:
+        args.out.mkdir(parents=True, exist_ok=True)
+        build_robot_library(args.out, version, args.suffix)
+        return 0
     blender_min = str(args.blender_min or manifest["blender_version_min"])
     note = "" if not args.blender_min else f"  (manifest says {manifest['blender_version_min']})"
     print(f"Animaquina {version}  (Blender {blender_min}+){note}")
