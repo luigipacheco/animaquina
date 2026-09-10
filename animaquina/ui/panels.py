@@ -779,23 +779,65 @@ class ANIMAQUINA_PT_ExportUR(Panel):
         layout.label(text="Step 1: Export")
         layout.prop(slot, "ur_program_name", text="Program Name")
         layout.operator("object.animaquina_export_ur", text="Export Program (.script + .urp)")
-        if _foldout(layout, context, ui, "ui_ur_show_export_settings", "Export Settings"):
-            box = layout.box()
+        # Program frame: base/tool, orientation, TCP and home decide where the
+        # program drives the robot, so they are visible in every mode. Hiding them
+        # in Basic would ship invisible defaults on exactly the values that matter
+        # most. None of this needs a connected robot.
+        box = layout.box()
+        box.label(text="Program Frame", icon="ORIENTATION_GLOBAL")
+        if slot.base_object is None:
+            # get_slot_blender_base_world_matrix falls back to identity here.
+            box.label(text="No robot base bound - positions relative to world origin", icon="ERROR")
 
-            box.prop(slot, "export_use_rotation_attribute", text="Per-Point Orientation (rotation attr)")
-            if slot.export_use_rotation_attribute:
-                box.prop(slot, "export_rotation_apply_transform", text="Apply Object Transform")
-            if not slot.export_use_rotation_attribute:
-                box.label(text="Custom orientation (deg)")
-                row = box.row(align=True)
-                row.label(text="A")
-                row.label(text="B")
-                row.label(text="C")
-                row = box.row(align=True)
-                row.prop(slot, "export_custom_a", text="")
-                row.prop(slot, "export_custom_b", text="")
-                row.prop(slot, "export_custom_c", text="")
-                box.operator("object.animaquina_set_ur_orientation", text="Set Orientation from Current")
+        box.prop(slot, "export_use_rotation_attribute", text="Per-Point Orientation (rotation attr)")
+        if slot.export_use_rotation_attribute:
+            box.prop(slot, "export_rotation_apply_transform", text="Apply Object Transform")
+        if not slot.export_use_rotation_attribute:
+            box.label(text="Custom orientation (deg)")
+            row = box.row(align=True)
+            row.label(text="A")
+            row.label(text="B")
+            row.label(text="C")
+            row = box.row(align=True)
+            row.prop(slot, "export_custom_a", text="")
+            row.prop(slot, "export_custom_b", text="")
+            row.prop(slot, "export_custom_c", text="")
+            box.operator("object.animaquina_set_ur_orientation", text="Set Orientation from Current")
+
+        box.prop(slot, "ur_export_custom_tool", text="Custom Tool")
+        if slot.ur_export_custom_tool:
+            tcp_box = box.box()
+            tcp_box.label(text="TCP (x, y, z, rx, ry, rz)")
+            row = tcp_box.row(align=True)
+            for i in range(6):
+                row.prop(slot, "ur_export_tcp", index=i, text="")
+            tcp_box.label(text="Payload")
+            tcp_box.prop(slot, "ur_export_payload_mass", text="Mass (kg)")
+            row = tcp_box.row(align=True)
+            row.label(text="CoG X")
+            row.label(text="CoG Y")
+            row.label(text="CoG Z")
+            row = tcp_box.row(align=True)
+            for i in range(3):
+                row.prop(slot, "ur_export_payload_cog", index=i, text="")
+
+        box.label(text="Home Joints (deg)")
+        row = box.row(align=True)
+        for i in range(6):
+            row.prop(slot, "ur_export_home", index=i, text=f"J{i + 1}")
+        box.operator("object.animaquina_set_home", text="Set Home from Current")
+
+        # Basic hides the speed fields, so show what will be exported instead of
+        # letting a motion value go unseen.
+        if _is_basic(context):
+            row = layout.row()
+            row.alert = slot.ur_export_vel > 0.25
+            row.label(
+                text=f"Motion: lin {slot.ur_export_vel:.2f} m/s, joint {slot.ur_export_joint_vel:.2f} rad/s",
+                icon="INFO",
+            )
+        if _foldout(layout, context, ui, "ui_ur_show_export_settings", "Motion Settings"):
+            box = layout.box()
 
             box.label(text="Linear (movel)")
             row = box.row(align=True)
@@ -825,29 +867,6 @@ class ANIMAQUINA_PT_ExportUR(Panel):
             sub.prop(slot, "export_point_index_var", text="")
             if slot.export_write_point_index and not slot.export_point_index_var.startswith("output_"):
                 box.label(text="UR: use output_int_register_0 to read it back over RTDE", icon="INFO")
-
-            box.prop(slot, "ur_export_custom_tool", text="Custom Tool")
-            if slot.ur_export_custom_tool:
-                tcp_box = box.box()
-                tcp_box.label(text="TCP (x, y, z, rx, ry, rz)")
-                row = tcp_box.row(align=True)
-                for i in range(6):
-                    row.prop(slot, "ur_export_tcp", index=i, text="")
-                tcp_box.label(text="Payload")
-                tcp_box.prop(slot, "ur_export_payload_mass", text="Mass (kg)")
-                row = tcp_box.row(align=True)
-                row.label(text="CoG X")
-                row.label(text="CoG Y")
-                row.label(text="CoG Z")
-                row = tcp_box.row(align=True)
-                for i in range(3):
-                    row.prop(slot, "ur_export_payload_cog", index=i, text="")
-
-            box.label(text="Home Joints (deg)")
-            row = box.row(align=True)
-            for i in range(6):
-                row.prop(slot, "ur_export_home", index=i, text=f"J{i + 1}")
-            box.operator("object.animaquina_set_home", text="Set Home from Current")
 
             if slot.ur_export_vel > 0.25:
                 warn = box.box()
@@ -925,26 +944,54 @@ class ANIMAQUINA_PT_ExportKUKA(Panel):
         layout.label(text="Step 1: Export")
         layout.prop(slot, "program_name", text="Program Name")
         layout.operator("object.animaquina_export_krl", text="Export Program (.src)")
-        if _foldout(layout, context, ui, "ui_kuka_show_export_settings", "Export Settings"):
-            box = layout.box()
-            row = box.row(align=True)
-            row.prop(slot, "export_base_no", text="Base #")
-            row.prop(slot, "export_tool_no", text="Tool #")
+        # Program frame: base/tool, orientation, TCP and home decide where the
+        # program drives the robot, so they are visible in every mode. Hiding them
+        # in Basic would ship invisible defaults on exactly the values that matter
+        # most. None of this needs a connected robot.
+        box = layout.box()
+        box.label(text="Program Frame", icon="ORIENTATION_GLOBAL")
+        if slot.base_object is None:
+            # get_slot_blender_base_world_matrix falls back to identity here.
+            box.label(text="No robot base bound - positions relative to world origin", icon="ERROR")
 
-            box.prop(slot, "export_use_rotation_attribute", text="Per-Point Orientation (rotation attr)")
-            if slot.export_use_rotation_attribute:
-                box.prop(slot, "export_rotation_apply_transform", text="Apply Object Transform")
-            if not slot.export_use_rotation_attribute:
-                box.label(text="Custom orientation (deg)")
-                row = box.row(align=True)
-                row.label(text="A")
-                row.label(text="B")
-                row.label(text="C")
-                row = box.row(align=True)
-                row.prop(slot, "export_custom_a", text="")
-                row.prop(slot, "export_custom_b", text="")
-                row.prop(slot, "export_custom_c", text="")
-                box.operator("object.animaquina_set_ur_orientation", text="Set Orientation from Current")
+        row = box.row(align=True)
+        row.prop(slot, "export_base_no", text="Base #")
+        row.prop(slot, "export_tool_no", text="Tool #")
+
+        box.prop(slot, "export_use_rotation_attribute", text="Per-Point Orientation (rotation attr)")
+        if slot.export_use_rotation_attribute:
+            box.prop(slot, "export_rotation_apply_transform", text="Apply Object Transform")
+        if not slot.export_use_rotation_attribute:
+            box.label(text="Custom orientation (deg)")
+            row = box.row(align=True)
+            row.label(text="A")
+            row.label(text="B")
+            row.label(text="C")
+            row = box.row(align=True)
+            row.prop(slot, "export_custom_a", text="")
+            row.prop(slot, "export_custom_b", text="")
+            row.prop(slot, "export_custom_c", text="")
+            box.operator("object.animaquina_set_ur_orientation", text="Set Orientation from Current")
+
+        box.label(text="Home Joints (deg)")
+        row = box.row(align=True)
+        for i in range(6):
+            row.prop(slot, "kuka_export_home", index=i, text=f"A{i + 1}")
+        box.operator("object.animaquina_set_home", text="Set Home from Current")
+        if bool(getattr(slot, "is_connected", False)):
+            box.operator("object.animaquina_store_home_to_robot", text="Store Home to Robot")
+
+        # Basic hides the speed fields, so show what will be exported instead of
+        # letting a motion value go unseen.
+        if _is_basic(context):
+            row = layout.row()
+            row.alert = slot.export_speed > 15 or slot.export_lin_speed > 0.2
+            row.label(
+                text=f"Motion: PTP {slot.export_speed:.0f}%, lin {slot.export_lin_speed:.2f} m/s",
+                icon="INFO",
+            )
+        if _foldout(layout, context, ui, "ui_kuka_show_export_settings", "Motion Settings"):
+            box = layout.box()
 
             box.label(text="KUKA motion")
             row = box.row(align=True)
@@ -966,14 +1013,6 @@ class ANIMAQUINA_PT_ExportKUKA(Panel):
             sub = row.row(align=True)
             sub.active = slot.export_write_point_index
             sub.prop(slot, "export_point_index_var", text="")
-
-            box.label(text="Home Joints (deg)")
-            row = box.row(align=True)
-            for i in range(6):
-                row.prop(slot, "kuka_export_home", index=i, text=f"A{i + 1}")
-            box.operator("object.animaquina_set_home", text="Set Home from Current")
-            if bool(getattr(slot, "is_connected", False)):
-                box.operator("object.animaquina_store_home_to_robot", text="Store Home to Robot")
 
             if slot.export_speed > 15 or slot.export_lin_speed > 0.2:
                 warn = box.box()
