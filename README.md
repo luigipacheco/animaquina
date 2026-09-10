@@ -313,34 +313,55 @@ Built-in attributes (`E_SPEED`, `E_ENABLE`, `L_SPEED`, `F_SPEED`) are handled se
 
 ## Building
 
-The add-on is plain Python; the only build step is the native dependency bundle.
-
 ```bash
-# 1. build the native wheels (Windows, MSVC toolchain required)
-tools/vendor-build/build_urrtde_master.bat
-
-# 2. zip the add-on folder for Blender
-python -c "import shutil; shutil.make_archive('animaquina','zip','.','animaquina')"
+python tools/build-addon.py
 ```
 
-`animaquina/vendor_py/` is **not** committed — it holds compiled binaries built
-per Python version. See [`tools/vendor-build/README.md`](tools/vendor-build/README.md);
-note in particular that the shipped `ur_rtde` is a patched master build and
-**not** a PyPI release, for reasons documented there.
+Produces `dist/animaquina-<version>.zip`, installable via **Preferences > Add-ons >
+Install from Disk**. The script validates the manifest, parses every module, and
+checks nothing stray ends up in the zip.
+
+| Flag | Use |
+|---|---|
+| `--vendor-py <dir>` | bundle a compiled native dependency folder (see below) |
+| `--blender-min X.Y.Z` | build for a different Blender/Python series than the manifest targets |
+| `--suffix <name>` | tag the filename, e.g. `--suffix uitest` |
+| `--out <dir>` | output directory (default `dist/`) |
+
+Without `--vendor-py` the build is **pure Python**: KUKA and xArm work fully, UR
+works on the bundled `urx` backend, and `ur_rtde` features are unavailable.
+
+### Native dependencies (`vendor_py`)
+
+`animaquina/vendor_py/` holds compiled extensions — the patched `ur_rtde`, plus
+`paramiko` and its dependencies. It is **not committed**: it must be built per
+Python version, and Blender pins one Python per release (4.2–4.5 → 3.11/`cp311`,
+5.x → 3.13/`cp313`).
+
+`ur_rtde` publishes **no `cp313` wheels for any version**, so Blender 5.x requires
+compiling from source. See [`tools/vendor-build/README.md`](tools/vendor-build/README.md)
+— note that the build targets a **python.org** interpreter, because Blender's
+bundled Python ships no `Python.h`. The resulting `cp313` `.pyd` loads in Blender
+regardless.
+
+`build-addon.py` compares the ABI tags in `--vendor-py` against the manifest's
+Blender floor and refuses mismatches, which otherwise fail at import with
+`bad magic number`.
 
 Moving these to Blender extension wheels declared in `blender_manifest.toml` is
 open work — see [Contributing](#contributing).
 
 ## Robot assets
 
-Robot rigs (`robots.blend`) ship as a **separate download**, not inside the add-on
-zip. They are ~70 MB, they version independently of the code, and they carry their
-own redistribution terms — see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+Robot rigs live in [`assets/robots/`](assets/robots) in this repository, but they
+are **not bundled into the add-on zip** — at ~70 MB they would bloat every update,
+and they carry different licence terms from the code. They ship as a separate
+release asset instead.
 
 To use them:
 
 1. Download `animaquina-robots-<version>.zip` from the releases page and unzip it
-   anywhere you like.
+   anywhere you like — or, if you cloned the repo, just point at `assets/robots/`.
 2. **Edit > Preferences > Add-ons > Animaquina**, set **Robot Library Folder** to
    that folder.
 3. Click **Register Robot Library**. The rigs then appear in any Asset Browser

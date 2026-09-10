@@ -652,6 +652,36 @@ class ANIMAQUINA_RobotSlot(PropertyGroup):
         soft_max=2.0,
         description="How the spring reacts to target velocity. 0 = starts from rest (neutral); 1 = immediately matches target speed; >1 = anticipates/leads the motion; <0 = briefly moves away first before following (organic anticipation snap)",
     )
+    # Puppet work boundary. A Blender object whose volume gates the streamed
+    # target. The target object itself is never moved - drag it anywhere; while
+    # it sits outside this volume Animaquina simply sends nothing and the robot
+    # holds its last commanded pose. Same shape as the max-step guard, which
+    # then catches the return trip if the target comes back far from the robot.
+    #
+    # NOT a safety function: this gates the commanded pose in a Python timer,
+    # not the robot's motion. Only the TCP point is tested (not elbow, wrist or
+    # tool), and nothing is enforced if Blender stalls. Mirror this volume as a
+    # controller-side safety zone for anything that actually matters.
+    puppet_bounds_object: PointerProperty(
+        name="Work Boundary",
+        type=Object,
+        poll=lambda self, obj: obj.type in {"MESH", "EMPTY"},
+        description=(
+            "Object whose volume gates the streamed puppet target. "
+            "Not a safety device - set a matching safety zone on the controller"
+        ),
+    )
+    puppet_bounds_enabled: BoolProperty(
+        name="Limit To Work Boundary",
+        default=True,
+        description="Stop streaming while the target is outside the work boundary",
+    )
+    puppet_bounds_outside: BoolProperty(
+        name="Target Outside Boundary",
+        default=False,
+        description="Set while the target sits outside the work boundary and streaming is paused",
+    )
+
     xarm_puppet_use_boundary: BoolProperty(
         name="Use xArm Safety Boundary",
         default=False,
@@ -876,44 +906,6 @@ class ANIMAQUINA_RobotSlot(PropertyGroup):
         description="Send Dashboard run command right after successful load",
     )
 
-    # UI foldouts (per robot slot)
-    ui_ctrl_show_motion_settings: BoolProperty(
-        name="Show Motion Settings",
-        default=False,
-    )
-    ui_ctrl_show_puppet_settings: BoolProperty(
-        name="Show Puppet Settings",
-        default=False,
-    )
-    ui_ctrl_show_advanced_streaming: BoolProperty(
-        name="Show Advanced Streaming",
-        default=False,
-    )
-    ui_ur_show_export_settings: BoolProperty(
-        name="Show UR Export Settings",
-        default=False,
-    )
-    ui_ur_show_stage_settings: BoolProperty(
-        name="Show UR Stage Settings",
-        default=False,
-    )
-    ui_ur_show_play_settings: BoolProperty(
-        name="Show UR Run Settings",
-        default=False,
-    )
-    ui_kuka_show_export_settings: BoolProperty(
-        name="Show KUKA Export Settings",
-        default=True,
-    )
-    ui_kuka_show_stage_settings: BoolProperty(
-        name="Show KUKA Stage Settings",
-        default=False,
-    )
-    ui_kuka_show_play_settings: BoolProperty(
-        name="Show KUKA Run Settings",
-        default=False,
-    )
-
     # KUKA export home position (A1-A6 deg)
     kuka_export_home: FloatVectorProperty(
         name="Home Joints (deg)", size=6, default=(5.0, -90.0, 100.0, 5.0, -10.0, -5.0),
@@ -1094,6 +1086,57 @@ class ANIMAQUINA_SceneProperties(PropertyGroup):
     new_robot_name: StringProperty(name="New Robot Name", default="Robot")
     # Single poll rate for all realtime slots (Hz)
     poll_rate_hz: FloatProperty(name="Poll Rate (Hz)", default=25.0, min=1.0, max=50.0, soft_max=50.0)
+
+    # UI complexity. Basic shows the connect / jog / run / export path and
+    # hides everything that is not part of it. Advanced shows all of it.
+    ui_complexity: EnumProperty(
+        name="UI Mode",
+        items=[
+            ("BASIC", "Basic", "Connect, jog, run a toolpath, export. Safe defaults"),
+            ("ADVANCED", "Advanced", "Everything, including streaming, simulation and tuning"),
+        ],
+        default="BASIC",
+    )
+
+    # UI foldouts. Scene-level, not per slot: panel collapse state is a
+    # property of the workspace, not of the robot being looked at. Keeping
+    # it on the slot made sections fold and unfold when switching robots.
+    ui_ctrl_show_motion_settings: BoolProperty(
+        name="Show Motion Settings",
+        default=False,
+    )
+    ui_ctrl_show_puppet_settings: BoolProperty(
+        name="Show Puppet Settings",
+        default=False,
+    )
+    ui_ctrl_show_advanced_streaming: BoolProperty(
+        name="Show Advanced Streaming",
+        default=False,
+    )
+    ui_ur_show_export_settings: BoolProperty(
+        name="Show UR Export Settings",
+        default=False,
+    )
+    ui_ur_show_stage_settings: BoolProperty(
+        name="Show UR Stage Settings",
+        default=False,
+    )
+    ui_ur_show_play_settings: BoolProperty(
+        name="Show UR Run Settings",
+        default=False,
+    )
+    ui_kuka_show_export_settings: BoolProperty(
+        name="Show KUKA Export Settings",
+        default=True,
+    )
+    ui_kuka_show_stage_settings: BoolProperty(
+        name="Show KUKA Stage Settings",
+        default=False,
+    )
+    ui_kuka_show_play_settings: BoolProperty(
+        name="Show KUKA Run Settings",
+        default=False,
+    )
 
 
 def register_properties():

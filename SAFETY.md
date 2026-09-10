@@ -52,6 +52,15 @@ for the full engineering review.
 - **Puppet Mode streams targets without validation.** Live targets are filtered
   and sent straight to the driver. The controller may choose a different joint
   configuration than the on-screen preview.
+- **The Puppet Mode work boundary is not a safety zone.** It pauses streaming
+  while the target object leaves a chosen volume, which limits an operator
+  mistake. It does not limit the robot. It gates the commanded pose in a Python
+  timer that can be starved; it tests only the target's origin point, so the
+  elbow, wrist and tool are unconstrained; the controller still interpolates
+  between the commands it has already been given; and nothing is enforced at all
+  if Blender stalls or the add-on is disabled mid-motion. Set a matching
+  safety-rated zone on the controller — UR safety planes, KUKA SafeOperation, or
+  your cell's equivalent. That is the one that protects a person.
 - **Preview is not execution.** UR Puppet Mode commands Cartesian `servoL`; the
   controller solves its own IK. What you saw in Blender is not necessarily what
   the arm will do.

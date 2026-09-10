@@ -24,12 +24,13 @@ check it here first.
 Rebuild it with the scripts in `tools/vendor-build/`. The long-term plan is to
 ship these as Blender extension wheels declared in `blender_manifest.toml`.
 
-## Robot models and geometry — not in this repository
+## Robot models and geometry
 
-Robot meshes and rigs (`robots.blend`) are **not committed here**. They ship as a
-separate release asset so the add-on stays small and so the code's licensing stays
-unambiguous — a GPL-3 add-on zip should not imply a GPL-3 grant over geometry the
-project does not own outright.
+Robot meshes and rigs live in `assets/robots/` — beside the add-on package, not
+inside it. They are committed here so the rigs are versioned with the code they
+match, but they are **excluded from the add-on zip** and ship as a separate
+release asset. A GPL-3 add-on zip should not imply a GPL-3 grant over geometry
+the project does not own outright.
 
 ### Origin
 

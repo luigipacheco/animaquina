@@ -70,6 +70,10 @@ class ANIMAQUINA_PT_Registry(Panel):
     def poll(cls, context):
         return context.scene is not None and hasattr(context.scene, "animaquina")
 
+    def draw_header_preset(self, context):
+        # In the header so the mode stays reachable while the panel is collapsed.
+        self.layout.prop(context.scene.animaquina, "ui_complexity", text="")
+
     def draw(self, context):
         try:
             if context.scene is None:
@@ -233,6 +237,97 @@ class ANIMAQUINA_PT_SceneObjects(Panel):
 
 # 3. Control (top-level, bl_order=2) - merges Commands + Motion
 
+def _is_basic(context):
+    """True when the UI is in Basic mode."""
+    return getattr(context.scene.animaquina, "ui_complexity", "BASIC") == "BASIC"
+
+
+def _foldout(container, context, ui, prop_name, label):
+    """Draw a collapsible section header; return True when the body should draw.
+
+    These sections hold tuning - speeds, spring constants, transport settings -
+    so in Basic they are absent rather than collapsed. A chevron that reveals
+    what the mode exists to hide is worse than no chevron.
+    """
+    if _is_basic(context):
+        return False
+    row = container.row(align=True)
+    open_now = bool(getattr(ui, prop_name, False))
+    row.prop(
+        ui, prop_name, text=label, emboss=False,
+        icon=("TRIA_DOWN" if open_now else "TRIA_RIGHT"),
+    )
+    return open_now
+
+
+def _slot_driver_caps(context):
+    """(slot, driver, caps) for the active slot. caps is 0 when disconnected."""
+    slot = get_active_slot_from_context(context)
+    if slot is None:
+        return None, None, 0
+    driver = manager.get_driver_for_slot(slot)
+    return slot, driver, (driver.capabilities() if driver else 0)
+
+
+TOOLPATH_CAPS = (
+    CAP_MANUAL_MODE | CAP_HOME | CAP_RESET | CAP_MOVE_TO_TARGET | CAP_EXECUTE_PATH
+)
+
+
+def _puppet_capable(slot, driver):
+    return bool(
+        driver
+        and hasattr(driver, "realtime_puppet_start")
+        and hasattr(driver, "realtime_puppet_step")
+        and hasattr(driver, "realtime_puppet_stop")
+        and slot is not None
+        and slot.is_connected
+    )
+
+
+def _streaming_available(slot):
+    if slot is None:
+        return False
+    return (slot.robot_type == "KUKA") or (
+        slot.robot_type == "UR" and slot.ur_backend == "ur_rtde"
+    )
+
+
+def _draw_motion_settings(container, slot):
+        if slot.robot_type in {"UR", "KUKA", "XARM"}:
+            container.label(text="Linear (movel)")
+            row = container.row(align=True)
+            row.label(text="Vel (m/s)")
+            row.label(text="Acc (m/s^2)")
+            row.label(text="Radius (m)")
+            row = container.row(align=True)
+            row.prop(slot, "speed", text="")
+            row.prop(slot, "acc", text="")
+            row.prop(slot, "radius", text="")
+            if slot.robot_type == "UR":
+                # Per-point speed from attribute (Run Toolpath Buffered)
+                row = container.row(align=True)
+                row.prop(slot, "use_speed_attribute", text="Per-Point Speed")
+                sub = row.row(align=True)
+                sub.active = slot.use_speed_attribute
+                sub.prop(slot, "speed_attribute", text="")
+        container.label(text=("Joint (PTP)" if slot.robot_type == "KUKA" else "Joint (movej)"))
+        row = container.row(align=True)
+        row.label(text=("Speed (%)" if slot.robot_type == "KUKA" else "Vel (rad/s)"))
+        row.label(text=("Acc (%)" if slot.robot_type == "KUKA" else "Acc (rad/s^2)"))
+        row = container.row(align=True)
+        row.prop(slot, ("kuka_ptp_speed_pct" if slot.robot_type == "KUKA" else "joint_vel"), text="")
+        row.prop(slot, ("kuka_ptp_acc_pct" if slot.robot_type == "KUKA" else "joint_acc"), text="")
+        if slot.robot_type != "KUKA":
+            container.label(text="Home")
+            row = container.row(align=True)
+            row.label(text="Vel (rad/s)")
+            row.label(text="Acc (rad/s^2)")
+            row = container.row(align=True)
+            row.prop(slot, "home_vel", text="")
+            row.prop(slot, "home_acc", text="")
+
+
 class ANIMAQUINA_PT_Control(Panel):
     bl_label = "Control"
     bl_idname = "ANIMAQUINA_PT_control"
@@ -247,84 +342,89 @@ class ANIMAQUINA_PT_Control(Panel):
         return get_active_slot_from_context(context) is not None
 
     def draw(self, context):
-        layout = self.layout
+        pass  # parent header only; content lives in the sub-panels below
+
+
+class ANIMAQUINA_PT_ControlProgram(Panel):
+    bl_label = "Program"
+    bl_idname = "ANIMAQUINA_PT_controlprogram"
+    bl_parent_id = "ANIMAQUINA_PT_control"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "Animaquina"
+
+    @classmethod
+    def poll(cls, context):
         slot = get_active_slot_from_context(context)
+        return slot is not None and slot.is_connected
+
+    def draw(self, context):
+        layout = self.layout
+        ui = context.scene.animaquina
+        slot, driver, caps = _slot_driver_caps(context)
         if slot is None:
             return
-        driver = manager.get_driver_for_slot(slot)
-        caps = driver.capabilities() if driver else 0
-
-        def _draw_motion_settings(container):
-            if slot.robot_type in {"UR", "KUKA", "XARM"}:
-                container.label(text="Linear (movel)")
-                row = container.row(align=True)
-                row.label(text="Vel (m/s)")
-                row.label(text="Acc (m/s^2)")
-                row.label(text="Radius (m)")
-                row = container.row(align=True)
-                row.prop(slot, "speed", text="")
-                row.prop(slot, "acc", text="")
-                row.prop(slot, "radius", text="")
-                if slot.robot_type == "UR":
-                    # Per-point speed from attribute (Run Toolpath Buffered)
-                    row = container.row(align=True)
-                    row.prop(slot, "use_speed_attribute", text="Per-Point Speed")
-                    sub = row.row(align=True)
-                    sub.active = slot.use_speed_attribute
-                    sub.prop(slot, "speed_attribute", text="")
-            container.label(text=("Joint (PTP)" if slot.robot_type == "KUKA" else "Joint (movej)"))
-            row = container.row(align=True)
-            row.label(text=("Speed (%)" if slot.robot_type == "KUKA" else "Vel (rad/s)"))
-            row.label(text=("Acc (%)" if slot.robot_type == "KUKA" else "Acc (rad/s^2)"))
-            row = container.row(align=True)
-            row.prop(slot, ("kuka_ptp_speed_pct" if slot.robot_type == "KUKA" else "joint_vel"), text="")
-            row.prop(slot, ("kuka_ptp_acc_pct" if slot.robot_type == "KUKA" else "joint_acc"), text="")
-            if slot.robot_type != "KUKA":
-                container.label(text="Home")
-                row = container.row(align=True)
-                row.label(text="Vel (rad/s)")
-                row.label(text="Acc (rad/s^2)")
-                row = container.row(align=True)
-                row.prop(slot, "home_vel", text="")
-                row.prop(slot, "home_acc", text="")
-
         # --- Program Controls (always visible when connected) ---
-        if slot.is_connected:
-            ctrl_box = layout.box()
-            ctrl_box.label(text="Program Controls")
+        ctrl_box = layout.box()
+        ctrl_box.label(text="Program Controls")
 
-            # Status line — show what is currently running
-            active_label = str(getattr(slot, "motion_active_label", "") or "")
-            if active_label:
-                status_row = ctrl_box.row()
-                status_row.label(text=active_label, icon="PLAY")
+        # Status line — show what is currently running
+        active_label = str(getattr(slot, "motion_active_label", "") or "")
+        if active_label:
+            status_row = ctrl_box.row()
+            status_row.label(text=active_label, icon="PLAY")
 
-            if slot.robot_type == "UR":
+        if slot.robot_type == "UR":
+            row = ctrl_box.row(align=True)
+            row.operator("object.animaquina_ur_pause_program", text="Pause", icon="PAUSE")
+            stop_row = row.row(align=True)
+            stop_row.alert = True
+            stop_row.operator("object.animaquina_ur_stop_program", text="Stop", icon="CANCEL")
+        elif slot.robot_type == "KUKA":
+            has_stop = hasattr(driver, "stop_program")
+            has_cancel = hasattr(driver, "cancel_program")
+            if has_stop or has_cancel:
                 row = ctrl_box.row(align=True)
-                row.operator("object.animaquina_ur_pause_program", text="Pause", icon="PAUSE")
-                stop_row = row.row(align=True)
-                stop_row.alert = True
-                stop_row.operator("object.animaquina_ur_stop_program", text="Stop", icon="CANCEL")
-            elif slot.robot_type == "KUKA":
-                has_stop = hasattr(driver, "stop_program")
-                has_cancel = hasattr(driver, "cancel_program")
-                if has_stop or has_cancel:
-                    row = ctrl_box.row(align=True)
-                    if has_stop:
-                        stop_sub = row.row(align=True)
-                        stop_sub.alert = True
-                        stop_sub.operator("object.animaquina_kuka_stop_program", text="Stop", icon="PAUSE")
-                    if has_cancel:
-                        cancel_sub = row.row(align=True)
-                        cancel_sub.alert = True
-                        cancel_sub.operator("object.animaquina_kuka_cancel_program", text="Cancel", icon="CANCEL")
-            elif slot.robot_type == "XARM" and hasattr(driver, "stop_motion"):
-                row = ctrl_box.row(align=True)
-                stop_row = row.row(align=True)
-                stop_row.alert = True
-                stop_row.operator("object.animaquina_xarm_stop_motion", text="Stop", icon="CANCEL")
+                if has_stop:
+                    stop_sub = row.row(align=True)
+                    stop_sub.alert = True
+                    stop_sub.operator("object.animaquina_kuka_stop_program", text="Stop", icon="PAUSE")
+                if has_cancel:
+                    cancel_sub = row.row(align=True)
+                    cancel_sub.alert = True
+                    cancel_sub.operator("object.animaquina_kuka_cancel_program", text="Cancel", icon="CANCEL")
+        elif slot.robot_type == "XARM" and hasattr(driver, "stop_motion"):
+            row = ctrl_box.row(align=True)
+            stop_row = row.row(align=True)
+            stop_row.alert = True
+            stop_row.operator("object.animaquina_xarm_stop_motion", text="Stop", icon="CANCEL")
 
+
+class ANIMAQUINA_PT_ControlToolpath(Panel):
+    bl_label = "Toolpath"
+    bl_idname = "ANIMAQUINA_PT_controltoolpath"
+    bl_parent_id = "ANIMAQUINA_PT_control"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "Animaquina"
+
+    @classmethod
+    def poll(cls, context):
+        _, _, caps = _slot_driver_caps(context)
+        return bool(caps & TOOLPATH_CAPS)
+
+    def draw(self, context):
+        layout = self.layout
+        ui = context.scene.animaquina
+        slot, driver, caps = _slot_driver_caps(context)
+        if slot is None:
+            return
         # --- Interactive Toolpathing ---
+        # caps is 0 while disconnected, so build the box only when the driver
+        # actually offers something - otherwise this drew an empty section.
+        _toolpath_caps = (
+            CAP_MANUAL_MODE | CAP_HOME | CAP_RESET | CAP_MOVE_TO_TARGET | CAP_EXECUTE_PATH
+        )
         toolpath_box = layout.box()
         toolpath_box.label(text="Interactive Toolpathing")
         toolpath_box.operator("object.animaquina_update_pose", text="Sync From Robot")
@@ -345,123 +445,173 @@ class ANIMAQUINA_PT_Control(Panel):
                 row.operator("object.animaquina_send_path_queue_ur", text="Run Toolpath (Buffered)")
         toolpath_box.operator("object.animaquina_add_marker", text="Add Marker")
 
+        # --- Shared Motion Settings ---
+        if (caps & CAP_MOVE_TO_TARGET) or (caps & CAP_EXECUTE_PATH):
+            if _foldout(layout, context, ui, "ui_ctrl_show_motion_settings", "Motion Settings"):
+                box = layout.box()
+                box.prop(slot, "move_mode", text="Move")
+                _draw_motion_settings(box, slot)
+
+
+class ANIMAQUINA_PT_ControlPuppet(Panel):
+    bl_label = "Puppet Mode"
+    bl_idname = "ANIMAQUINA_PT_controlpuppet"
+    bl_parent_id = "ANIMAQUINA_PT_control"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "Animaquina"
+
+    @classmethod
+    def poll(cls, context):
+        slot, driver, _ = _slot_driver_caps(context)
+        return _puppet_capable(slot, driver)
+
+    def draw(self, context):
+        layout = self.layout
+        ui = context.scene.animaquina
+        slot, driver, caps = _slot_driver_caps(context)
+        if slot is None:
+            return
         # --- Puppet Mode ---
-        puppet_box = layout.box()
-        puppet_box.label(text="Puppet Mode")
-        if (
+        # Only drivers that implement the puppet trio can do this at all, so a
+        # driver lacking them gets no section rather than an explanation.
+        _puppet_capable = (
             driver
             and hasattr(driver, "realtime_puppet_start")
             and hasattr(driver, "realtime_puppet_step")
             and hasattr(driver, "realtime_puppet_stop")
             and slot.is_connected
-        ):
-            if slot.robot_type == "UR" and str(getattr(driver, "backend_name", "") or "") != "ur_rtde":
-                info = puppet_box.box()
-                info.label(text="Requires UR backend: ur_rtde", icon="INFO")
-            else:
-                row = puppet_box.row(align=True)
-                row.operator("object.animaquina_realtime_puppet_start", text="Start Puppet Mode")
-                row.operator("object.animaquina_realtime_puppet_stop", text="Stop Puppet Mode")
-                if getattr(slot, "realtime_puppet_status", ""):
-                    status_box = puppet_box.box()
-                    status_box.label(text="Puppet Status")
-                    status_box.label(text=(slot.realtime_puppet_status or "")[:180])
-                row = puppet_box.row(align=True)
-                row.prop(
-                    slot,
-                    "ui_ctrl_show_puppet_settings",
-                    text="Puppet Settings",
-                    emboss=False,
-                    icon=("TRIA_DOWN" if slot.ui_ctrl_show_puppet_settings else "TRIA_RIGHT"),
-                )
-                if slot.ui_ctrl_show_puppet_settings:
-                    settings_box = puppet_box.box()
-                    row = settings_box.row(align=True)
-                    row.prop(slot, "realtime_puppet_rate_hz", text="Rate (Hz)")
-                    row.prop(slot, "realtime_puppet_max_step_mm", text="Max Step (mm)")
-                    # Spring follow
-                    spring_row = settings_box.row(align=True)
-                    spring_row.prop(slot, "puppet_spring_enabled", text="Spring Follow")
-                    if slot.puppet_spring_enabled:
-                        sub = settings_box.column(align=True)
-                        sub.prop(slot, "puppet_spring_freq", text="Frequency (Hz)")
-                        sub.prop(slot, "puppet_spring_damping", text="Damping")
-                        sub.prop(slot, "puppet_spring_response", text="Response")
-                    if slot.robot_type == "KUKA":
-                        settings_box.prop(slot, "kuka_puppet_speed_pct", text="Puppet Speed (%)")
-                    if slot.robot_type == "XARM":
-                        settings_box.prop(slot, "xarm_puppet_use_boundary", text="Use xArm Safety Boundary")
-                        if slot.xarm_puppet_use_boundary:
-                            b = settings_box.box()
-                            b.label(text="Boundary [x_max, x_min, y_max, y_min, z_max, z_min] mm")
-                            row = b.row(align=True)
-                            for i in range(6):
-                                row.prop(slot, "xarm_puppet_boundary_mm", index=i, text="")
+        )
+        puppet_box = layout.box()
+        puppet_box.label(text="Puppet Mode")
+        # ur_backend is a setting the user can change, so this one stays
+        # visible as a hint rather than being hidden.
+        if slot.robot_type == "UR" and str(getattr(driver, "backend_name", "") or "") != "ur_rtde":
+            puppet_box.label(text="Requires UR backend: ur_rtde", icon="INFO")
         else:
-            puppet_box.label(text="Connect a supported robot to enable Puppet Mode", icon="INFO")
+            # Basic requires a work boundary before streaming live targets.
+            # Advanced can run without one, deliberately.
+            _needs_bounds = _is_basic(context) and slot.puppet_bounds_object is None
+            row = puppet_box.row(align=True)
+            start_sub = row.row(align=True)
+            start_sub.enabled = not _needs_bounds
+            start_sub.operator("object.animaquina_realtime_puppet_start", text="Start Puppet Mode")
+            row.operator("object.animaquina_realtime_puppet_stop", text="Stop Puppet Mode")
+            if _needs_bounds:
+                puppet_box.label(text="Set a work boundary to start", icon="ERROR")
 
-        # --- Shared Motion Settings ---
-        if (caps & CAP_MOVE_TO_TARGET) or (caps & CAP_EXECUTE_PATH):
-            row = layout.row(align=True)
-            row.prop(
-                slot,
-                "ui_ctrl_show_motion_settings",
-                text="Motion Settings",
-                emboss=False,
-                icon=("TRIA_DOWN" if slot.ui_ctrl_show_motion_settings else "TRIA_RIGHT"),
-            )
-            if slot.ui_ctrl_show_motion_settings:
-                box = layout.box()
-                box.prop(slot, "move_mode", text="Move")
-                _draw_motion_settings(box)
+            # Work boundary. Sits above the status line because whether one
+            # is set changes how to read that status.
+            bounds_row = puppet_box.row(align=True)
+            bounds_row.prop(slot, "puppet_bounds_enabled", text="")
+            sub = bounds_row.row(align=True)
+            sub.enabled = slot.puppet_bounds_enabled
+            sub.prop(slot, "puppet_bounds_object", text="Boundary")
+            if slot.puppet_bounds_object is None:
+                bounds_row.operator(
+                    "animaquina.create_puppet_bounds", text="", icon="MESH_CUBE"
+                )
+            if slot.puppet_bounds_enabled and slot.puppet_bounds_object is not None                         and getattr(slot, "puppet_bounds_outside", False):
+                puppet_box.label(text="Target outside boundary - holding", icon="ERROR")
 
+            if getattr(slot, "realtime_puppet_status", ""):
+                status_box = puppet_box.box()
+                status_box.label(text="Puppet Status")
+                status_box.label(text=(slot.realtime_puppet_status or "")[:180])
+            if _foldout(puppet_box, context, ui, "ui_ctrl_show_puppet_settings", "Puppet Settings"):
+                settings_box = puppet_box.box()
+                row = settings_box.row(align=True)
+                row.prop(slot, "realtime_puppet_rate_hz", text="Rate (Hz)")
+                row.prop(slot, "realtime_puppet_max_step_mm", text="Max Step (mm)")
+                # Spring follow
+                spring_row = settings_box.row(align=True)
+                spring_row.prop(slot, "puppet_spring_enabled", text="Spring Follow")
+                if slot.puppet_spring_enabled:
+                    sub = settings_box.column(align=True)
+                    sub.prop(slot, "puppet_spring_freq", text="Frequency (Hz)")
+                    sub.prop(slot, "puppet_spring_damping", text="Damping")
+                    sub.prop(slot, "puppet_spring_response", text="Response")
+                if slot.robot_type == "KUKA":
+                    settings_box.prop(slot, "kuka_puppet_speed_pct", text="Puppet Speed (%)")
+                if slot.robot_type == "XARM":
+                    settings_box.prop(slot, "xarm_puppet_use_boundary", text="Use xArm Safety Boundary")
+                    if slot.xarm_puppet_use_boundary:
+                        b = settings_box.box()
+                        b.label(text="Boundary [x_max, x_min, y_max, y_min, z_max, z_min] mm")
+                        row = b.row(align=True)
+                        for i in range(6):
+                            row.prop(slot, "xarm_puppet_boundary_mm", index=i, text="")
+
+
+class ANIMAQUINA_PT_ControlStreaming(Panel):
+    bl_label = "Streaming"
+    bl_idname = "ANIMAQUINA_PT_controlstreaming"
+    bl_parent_id = "ANIMAQUINA_PT_control"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "Animaquina"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        # Advanced only: buffered streaming and Dynamic Sync are not part
+        # of the basic connect-jog-run-export path.
+        if _is_basic(context):
+            return False
+        return _streaming_available(get_active_slot_from_context(context))
+
+    def draw(self, context):
+        layout = self.layout
+        ui = context.scene.animaquina
+        slot, driver, caps = _slot_driver_caps(context)
+        if slot is None:
+            return
         # --- Advanced Streaming ---
         _show_streaming = (slot.robot_type == "KUKA") or (slot.robot_type == "UR" and slot.ur_backend == "ur_rtde")
-        if _show_streaming:
-            row = layout.row(align=True)
-            row.prop(
-                slot,
-                "ui_ctrl_show_advanced_streaming",
-                text="Advanced Streaming",
-                emboss=False,
-                icon=("TRIA_DOWN" if slot.ui_ctrl_show_advanced_streaming else "TRIA_RIGHT"),
-            )
-            if slot.ui_ctrl_show_advanced_streaming:
-                box = layout.box()
-                if slot.robot_type == "UR":
-                    box.label(text="UR Buffered Toolpath")
-                    box.prop(slot, "ur_queue_buffer_size", text="Ring Buffer Size")
-                    if getattr(slot, "ur_queue_health", ""):
-                        st = box.box()
-                        st.label(text="Stream Status")
-                        st.label(text=(slot.ur_queue_health or "")[-180:])
-                elif slot.robot_type == "KUKA":
-                    box.label(text="KUKA Dynamic Sync")
-                    info = box.box()
-                    info.label(text="Buffer Size is baked into mq_stream.", icon="INFO")
-                    info.label(text="After changing it: Upload, then Select Dynamic Sync.")
-                    row = box.row(align=True)
-                    row.prop(slot, "export_base_no", text="Base #")
-                    row.prop(slot, "export_tool_no", text="Tool #")
-                    box.prop(slot, "remote_path", text="Path")
-                    box.prop(slot, "kuka_ring_buffer_size", text="Buffer Size")
-                    box.prop(slot, "kuka_advance", text="Advance Lookahead")
-                    current_size = int(getattr(slot, "kuka_ring_buffer_size", 6) or 6)
-                    uploaded_size = int(getattr(slot, "kuka_stream_uploaded_ring_size", 0) or 0)
-                    if uploaded_size > 0 and uploaded_size != current_size:
-                        warn = box.box()
-                        warn.alert = True
-                        warn.label(text=f"Uploaded buffer is {uploaded_size}; re-upload to apply {current_size}.")
-                    elif uploaded_size > 0 and bool(getattr(slot, "stream_program_uploaded", False)):
-                        ok = box.box()
-                        ok.label(text=f"Uploaded program buffer: {uploaded_size}")
-                    elif not bool(getattr(slot, "stream_program_uploaded", False)):
-                        warn = box.box()
-                        warn.alert = True
-                        warn.label(text="Upload + Select Dynamic Sync after changing settings.")
-                    row = box.row(align=True)
-                    row.operator("object.animaquina_upload_stream", text="Upload Dynamic Sync")
-                    row.operator("object.animaquina_select_stream", text="Select Dynamic Sync")
+        row = layout.row(align=True)
+        row.prop(
+            ui,
+            "ui_ctrl_show_advanced_streaming",
+            text="Advanced Streaming",
+            emboss=False,
+            icon=("TRIA_DOWN" if ui.ui_ctrl_show_advanced_streaming else "TRIA_RIGHT"),
+        )
+        if ui.ui_ctrl_show_advanced_streaming:
+            box = layout.box()
+            if slot.robot_type == "UR":
+                box.label(text="UR Buffered Toolpath")
+                box.prop(slot, "ur_queue_buffer_size", text="Ring Buffer Size")
+                if getattr(slot, "ur_queue_health", ""):
+                    st = box.box()
+                    st.label(text="Stream Status")
+                    st.label(text=(slot.ur_queue_health or "")[-180:])
+            elif slot.robot_type == "KUKA":
+                box.label(text="KUKA Dynamic Sync")
+                info = box.box()
+                info.label(text="Buffer Size is baked into mq_stream.", icon="INFO")
+                info.label(text="After changing it: Upload, then Select Dynamic Sync.")
+                row = box.row(align=True)
+                row.prop(slot, "export_base_no", text="Base #")
+                row.prop(slot, "export_tool_no", text="Tool #")
+                box.prop(slot, "remote_path", text="Path")
+                box.prop(slot, "kuka_ring_buffer_size", text="Buffer Size")
+                box.prop(slot, "kuka_advance", text="Advance Lookahead")
+                current_size = int(getattr(slot, "kuka_ring_buffer_size", 6) or 6)
+                uploaded_size = int(getattr(slot, "kuka_stream_uploaded_ring_size", 0) or 0)
+                if uploaded_size > 0 and uploaded_size != current_size:
+                    warn = box.box()
+                    warn.alert = True
+                    warn.label(text=f"Uploaded buffer is {uploaded_size}; re-upload to apply {current_size}.")
+                elif uploaded_size > 0 and bool(getattr(slot, "stream_program_uploaded", False)):
+                    ok = box.box()
+                    ok.label(text=f"Uploaded program buffer: {uploaded_size}")
+                elif not bool(getattr(slot, "stream_program_uploaded", False)):
+                    warn = box.box()
+                    warn.alert = True
+                    warn.label(text="Upload + Select Dynamic Sync after changing settings.")
+                row = box.row(align=True)
+                row.operator("object.animaquina_upload_stream", text="Upload Dynamic Sync")
+                row.operator("object.animaquina_select_stream", text="Select Dynamic Sync")
 
 
 # 4. Simulation (top-level, bl_order=3)
@@ -477,6 +627,9 @@ class ANIMAQUINA_PT_Newton(Panel):
 
     @classmethod
     def poll(cls, context):
+        # Advanced only: validation is a tuning/verification tool.
+        if _is_basic(context):
+            return False
         return get_active_slot_from_context(context) is not None
 
     def draw(self, context):
@@ -597,26 +750,36 @@ class ANIMAQUINA_PT_Export(Panel):
         return slot is not None and slot.robot_type in {"UR", "KUKA"}
 
     def draw(self, context):
+        pass  # parent header only; content lives in the per-brand sub-panels
+
+
+# --- Export > Universal Robots (sub-panel) ---
+
+class ANIMAQUINA_PT_ExportUR(Panel):
+    bl_label = "Universal Robots"
+    bl_idname = "ANIMAQUINA_PT_export_ur"
+    bl_parent_id = "ANIMAQUINA_PT_export"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "Animaquina"
+
+    @classmethod
+    def poll(cls, context):
+        slot = get_active_slot_from_context(context)
+        return slot is not None and slot.robot_type == "UR"
+
+    def draw(self, context):
         layout = self.layout
+        ui = context.scene.animaquina
         slot = get_active_slot_from_context(context)
         if slot is None:
-            return
-        if slot.robot_type != "UR":
             return
 
         # Step 1: Export
         layout.label(text="Step 1: Export")
         layout.prop(slot, "ur_program_name", text="Program Name")
         layout.operator("object.animaquina_export_ur", text="Export Program (.script + .urp)")
-        row = layout.row(align=True)
-        row.prop(
-            slot,
-            "ui_ur_show_export_settings",
-            text="Export Settings",
-            emboss=False,
-            icon=("TRIA_DOWN" if slot.ui_ur_show_export_settings else "TRIA_RIGHT"),
-        )
-        if slot.ui_ur_show_export_settings:
+        if _foldout(layout, context, ui, "ui_ur_show_export_settings", "Export Settings"):
             box = layout.box()
 
             box.prop(slot, "export_use_rotation_attribute", text="Per-Point Orientation (rotation attr)")
@@ -695,15 +858,7 @@ class ANIMAQUINA_PT_Export(Panel):
         layout.separator()
         layout.label(text="Step 2: Stage")
         layout.operator("object.animaquina_ur_save_program", text="Stage to Robot")
-        row = layout.row(align=True)
-        row.prop(
-            slot,
-            "ui_ur_show_stage_settings",
-            text="Stage Settings",
-            emboss=False,
-            icon=("TRIA_DOWN" if slot.ui_ur_show_stage_settings else "TRIA_RIGHT"),
-        )
-        if slot.ui_ur_show_stage_settings:
+        if _foldout(layout, context, ui, "ui_ur_show_stage_settings", "Stage Settings"):
             box = layout.box()
             box.prop(slot, "ur_stage_transport", text="Stage Via")
             if slot.ur_stage_transport == "sftp":
@@ -727,15 +882,7 @@ class ANIMAQUINA_PT_Export(Panel):
         row = layout.row(align=True)
         row.operator("object.animaquina_ur_pause_program", text="Pause Program")
         row.operator("object.animaquina_ur_stop_program", text="Stop Program")
-        row = layout.row(align=True)
-        row.prop(
-            slot,
-            "ui_ur_show_play_settings",
-            text="Run Settings",
-            emboss=False,
-            icon=("TRIA_DOWN" if slot.ui_ur_show_play_settings else "TRIA_RIGHT"),
-        )
-        if slot.ui_ur_show_play_settings:
+        if _foldout(layout, context, ui, "ui_ur_show_play_settings", "Run Settings"):
             box = layout.box()
             box.prop(slot, "ur_dashboard_port", text="Dash Port")
             if slot.ur_stage_transport != "sftp":
@@ -770,6 +917,7 @@ class ANIMAQUINA_PT_ExportKUKA(Panel):
 
     def draw(self, context):
         layout = self.layout
+        ui = context.scene.animaquina
         slot = get_active_slot_from_context(context)
         if slot is None:
             return
@@ -777,15 +925,7 @@ class ANIMAQUINA_PT_ExportKUKA(Panel):
         layout.label(text="Step 1: Export")
         layout.prop(slot, "program_name", text="Program Name")
         layout.operator("object.animaquina_export_krl", text="Export Program (.src)")
-        row = layout.row(align=True)
-        row.prop(
-            slot,
-            "ui_kuka_show_export_settings",
-            text="Export Settings",
-            emboss=False,
-            icon=("TRIA_DOWN" if slot.ui_kuka_show_export_settings else "TRIA_RIGHT"),
-        )
-        if slot.ui_kuka_show_export_settings:
+        if _foldout(layout, context, ui, "ui_kuka_show_export_settings", "Export Settings"):
             box = layout.box()
             row = box.row(align=True)
             row.prop(slot, "export_base_no", text="Base #")
@@ -856,15 +996,7 @@ class ANIMAQUINA_PT_ExportKUKA(Panel):
         cancel_row = layout.row(align=True)
         cancel_row.alert = bool(getattr(slot, "realtime_puppet_active", False))
         cancel_row.operator("object.animaquina_kuka_cancel_program", text="Cancel Program", icon="CANCEL")
-        row = layout.row(align=True)
-        row.prop(
-            slot,
-            "ui_kuka_show_stage_settings",
-            text="Stage Settings",
-            emboss=False,
-            icon=("TRIA_DOWN" if slot.ui_kuka_show_stage_settings else "TRIA_RIGHT"),
-        )
-        if slot.ui_kuka_show_stage_settings:
+        if _foldout(layout, context, ui, "ui_kuka_show_stage_settings", "Stage Settings"):
             box = layout.box()
             box.prop(slot, "remote_path", text="Path")
             box.label(text="Stage uploads .src and selects it on the controller.")
@@ -885,6 +1017,9 @@ class ANIMAQUINA_PT_Debug(Panel):
 
     @classmethod
     def poll(cls, context):
+        # Advanced only: developer diagnostics.
+        if _is_basic(context):
+            return False
         return get_active_slot_from_context(context) is not None
 
     def draw(self, context):
@@ -1223,10 +1358,15 @@ PANEL_CLASSES = [
     ANIMAQUINA_PT_Setup,
     ANIMAQUINA_PT_Connection,        # child of Setup
     ANIMAQUINA_PT_SceneObjects,      # child of Setup
-    ANIMAQUINA_PT_Control,           # replaces Commands + Motion
+    ANIMAQUINA_PT_Control,           # parent header
+    ANIMAQUINA_PT_ControlProgram,    # child of Control
+    ANIMAQUINA_PT_ControlToolpath,   # child of Control
+    ANIMAQUINA_PT_ControlPuppet,     # child of Control
+    ANIMAQUINA_PT_ControlStreaming,  # child of Control (Advanced only)
     ANIMAQUINA_PT_Newton,
     ANIMAQUINA_PT_ValidationResults, # child of Simulation
     ANIMAQUINA_PT_Export,            # parent header
+    ANIMAQUINA_PT_ExportUR,          # child of Export
     ANIMAQUINA_PT_ExportKUKA,        # child of Export
     ANIMAQUINA_PT_Info,
     ANIMAQUINA_PT_TextEditor,        # Text Editor sidebar

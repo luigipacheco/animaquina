@@ -175,11 +175,16 @@ git apply <repo>\tools\vendor-build\patches\ur_rtde-animaquina.patch
    `*.dist-info/LICENSE` — ur_rtde is MIT, redistribution is fine.
 3. Verify under Blender's interpreter:
    `<blender python.exe> -c "import sys; sys.path.insert(0,'vendor_py_cp313'); import rtde_control, rtde_receive, paramiko; print('ok')"`
-4. **Ship it without touching the repo's cp311 folder** — point your packaging step at
-   the new folder when staging the add-on zip:
+4. **Ship it by pointing the build script at the new folder** — never copy it over
+   the repo tree:
    ```powershell
-   Copy-Item -Recurse <...>endor_py_cp313 animaquinaendor_py
-   python -c "import shutil; shutil.make_archive('dist/animaquina','zip','.','animaquina')"
+   python toolsuild-addon.py --vendor-py <...>endor_py_cp313
+   ```
+   `build-addon.py` verifies the folder's ABI tags against `blender_version_min`
+   and refuses a mismatch, so a cp311 bundle can never be shipped as a Blender 5.x
+   build. To produce a build for a different series, state it explicitly:
+   ```powershell
+   python toolsuild-addon.py --vendor-py <...>endor_py_cp311 --blender-min 4.2.0
    ```
 
 Ready-to-run build scripts + a step-by-step runbook live in `tools/vendor-build/`

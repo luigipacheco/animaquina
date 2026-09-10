@@ -67,10 +67,7 @@ This whole procedure is **one-time per Python version**. Once you have a
 `vendor_py_<tag>` folder, making a new installable zip is a single command:
 
 ```powershell
-<blender python.exe> tools\generate-license.py --all-features `
-  --target-python-version 3.13 `
-  --vendor-py <...>\vendor_py_cp313 `
-  --bundle-output dist\animaquina-beta-<name>.zip
+python tools\build-addon.py --vendor-py <...>\vendor_py_cp313
 ```
 
 Re-run the build below only when: Blender bumps Python again, or you upgrade ur_rtde.
@@ -96,18 +93,28 @@ Standalone **CMake 3.29.6** (must be < 3.30 — see note in build_urrtde.bat) an
    PolyScope X). The old `build_urrtde.bat` builds stock 1.6.3 from PyPI and is
    kept only for reference — do **not** ship its output.
    → `animaquina-build\urrtde_wheel_master\ur_rtde-<ver>-cp313-cp313-win_amd64.whl`.
-3. **Assemble `vendor_py_cp313`** (run with the *Blender* python so you get cp313 wheels):
+3. **Assemble `vendor_py_cp313`.** This step is pure wheel download - no compiler,
+   and no Blender or Python 3.13 needed on the machine doing it. Any pip can
+   fetch wheels for another interpreter with the cross-download flags:
    ```powershell
-   <blender python.exe> -m pip install --target vendor_py_cp313 --only-binary=:all: `
+   python -m pip install --target vendor_py_cp313 --only-binary=:all: `
+     --python-version 3.13 --implementation cp --abi cp313 --platform win_amd64 `
      mujoco==3.6.0 paramiko==4.0.0 glfw==2.10.0 PyOpenGL==3.1.10 invoke==2.2.1 numpy==2.4.4
-   # then overlay the compiled ur_rtde files from the wheel:
-   #   *.cp313-win_amd64.pyd, rtde.dll, urcl/, ur_rtde-*.dist-info/   ->  vendor_py_cp313/
    ```
+   (Running Blender's own python without those flags works too, and is what the
+   original recipe did - but it ties this step to a machine with Blender 5.2.)
+
+   Then overlay the compiled ur_rtde files from the wheel built in step 2:
+   `*.cp313-win_amd64.pyd`, `rtde.dll`, `urcl/`, `ur_rtde-*.dist-info/` -> `vendor_py_cp313/`
+
+   Strip `__pycache__` afterwards; `build-addon.py` refuses a zip containing caches.
 4. **Verify** under Blender's interpreter:
    ```powershell
    <blender python.exe> -c "import sys; sys.path.insert(0,'vendor_py_cp313'); import rtde_control, rtde_receive, paramiko, mujoco, numpy; print('ok')"
    ```
-5. **Ship**: pass `--vendor-py vendor_py_cp313` to `generate-license.py` (see above).
+5. **Ship**: `python tools\build-addon.py --vendor-py <path>\vendor_py_cp313`
+   The build script verifies the folder's ABI tags against `blender_version_min`
+   and refuses a mismatch, so a cp311 bundle cannot ship as a Blender 5.x build.
 
 ## Gotchas already solved (don't rediscover them)
 

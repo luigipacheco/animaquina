@@ -1,0 +1,254 @@
+RIG DUMP — kr10r1100-2_twin
+Blender 5.1.0
+File: C:\Users\luigi\Documents\animaquina\animaquina\assets\robots\robots.blend
+======================================================================
+[COLLECTION] kr10r1100-2_twin  (10 objects)
+  [EMPTY] kr10r1100-2_twin_base
+    display: ARROWS  size: 0.100
+    location: [0.0, 0.0, 0.0]
+    rotation: <Euler (x=0.0000, y=0.0000, z=0.0000), order='XYZ'>  mode: XYZ
+    [MESH] kr10r1100-2_twin_j0  parent=kr10r1100-2_twin_base
+      location: [0.0, 0.0, 0.0]
+      rotation: <Euler (x=0.0000, y=0.0000, z=0.0000), order='XYZ'>  mode: XYZ
+      scale: [1.0, 1.0, 1.0]
+      verts: 11978  faces: 23956
+      matrix_world row0: [1.0, 0.0, 0.0, 0.0]
+      matrix_world row1: [0.0, 1.0, 0.0, 0.0]
+      matrix_world row2: [0.0, 0.0, 1.0, 0.0]
+      matrix_world row3: [0.0, 0.0, 0.0, 1.0]
+      [ARMATURE] kr10r1100-2_twin  parent=kr10r1100-2_twin_j0
+        location: [0.0, 0.0, 0.0]
+        rotation: <Euler (x=0.0000, y=0.0000, z=0.0000), order='XYZ'>  mode: XYZ
+        display_type: WIRE
+        show_in_front: False
+        BONES (7):
+          --- joint_1 ---
+            head_local:  [0.0, 0.0, 0.0]
+            tail_local:  [0.0, 0.0, 0.4]
+            length:      0.4
+            parent:      None
+            connected:   False
+            x_axis:      [1.0, 0.0, 0.0]
+            y_axis:      [0.0, 0.0, 1.0]
+            z_axis:      [0.0, -1.0, 0.0]
+            matrix_local:
+              [1.0, 0.0, 0.0, 0.0]
+              [0.0, 0.0, -1.0, 0.0]
+              [0.0, 1.0, 0.0, 0.0]
+              [0.0, 0.0, 0.0, 1.0]
+            pose rotation_mode: XYZ
+            pose rotation_euler: <Euler (x=0.0000, y=-0.0000, z=0.0000), order='XYZ'>
+            pose matrix_basis:
+              [1.0, 0.0, 0.0, 0.0]
+              [0.0, 1.0, 0.0, 0.0]
+              [0.0, 0.0, 1.0, 0.0]
+              [0.0, 0.0, 0.0, 1.0]
+          --- joint_2 ---
+            head_local:  [0.025, 0.0, 0.4]
+            tail_local:  [0.585, 0.0, 0.4]
+            length:      0.56
+            parent:      joint_1
+            connected:   False
+            x_axis:      [-0.0, -1.0, 0.0]
+            y_axis:      [1.0, -0.0, 0.0]
+            z_axis:      [0.0, 0.0, 1.0]
+            matrix_local:
+              [-0.0, 1.0, 0.0, 0.025]
+              [-1.0, -0.0, 0.0, 0.0]
+              [0.0, 0.0, 1.0, 0.4]
+              [0.0, 0.0, 0.0, 1.0]
+            pose rotation_mode: XYZ
+            pose rotation_euler: <Euler (x=0.0000, y=-0.0000, z=0.0000), order='XYZ'>
+            pose matrix_basis:
+              [1.0, 0.0, 0.0, 0.0]
+              [0.0, 1.0, 0.0, 0.0]
+              [0.0, 0.0, 1.0, 0.0]
+              [0.0, 0.0, 0.0, 1.0]
+          --- joint_3 ---
+            head_local:  [0.585, 0.0, 0.4]
+            tail_local:  [0.790005, 0.0, 0.399995]
+            length:      0.205005
+            parent:      joint_2
+            connected:   True
+            x_axis:      [-0.0, -1.0, 0.0]
+            y_axis:      [1.0, -0.0, -0.0]
+            z_axis:      [0.0, 0.0, 1.0]
+            matrix_local:
+              [-0.0, 1.0, 2.5e-05, 0.585]
+              [-1.0, -0.0, 4.8e-05, 0.0]
+              [4.8e-05, -2.5e-05, 1.0, 0.4]
+              [0.0, 0.0, 0.0, 1.0]
+            pose rotation_mode: XYZ
+            pose rotation_euler: <Euler (x=0.0000, y=-0.0000, z=0.0000), order='XYZ'>
+            pose matrix_basis:
+              [1.0, 0.0, 0.0, 0.0]
+              [0.0, 1.0, 0.0, 0.0]
+              [0.0, 0.0, 1.0, 0.0]
+              [0.0, 0.0, 0.0, 1.0]
+          --- joint_4 ---
+            head_local:  [0.790005, 0.0, 0.425034]
+            tail_local:  [1.1, 0.0, 0.425034]
+            length:      0.309995
+            parent:      joint_3
+            connected:   False
+            x_axis:      [0.0, -0.9995, -0.0321]
+            y_axis:      [1.0, 0.0, 0.0]
+            z_axis:      [0.0, -0.0321, 0.9995]
+            matrix_local:
+              [0.0, 1.0, 0.0, 0.790005]
+              [-0.999484, 0.0, -0.032134, -0.0]
+              [-0.032134, 0.0, 0.999484, 0.425034]
+              [0.0, 0.0, 0.0, 1.0]
+            pose rotation_mode: XYZ
+            pose rotation_euler: <Euler (x=0.0000, y=-0.0000, z=0.0000), order='XYZ'>
+            pose matrix_basis:
+              [1.0, 0.0, 0.0, 0.0]
+              [0.0, 1.0, 0.0, 0.0]
+              [0.0, 0.0, 1.0, 0.0]
+              [0.0, 0.0, 0.0, 1.0]
+          --- joint_5 ---
+            head_local:  [1.1, 0.0, 0.425034]
+            tail_local:  [1.153505, 0.0, 0.425034]
+            length:      0.053505
+            parent:      joint_4
+            connected:   True
+            x_axis:      [-0.0, -1.0, 0.0]
+            y_axis:      [1.0, -0.0, 0.0]
+            z_axis:      [-0.0, 0.0, 1.0]
+            matrix_local:
+              [-1e-06, 1.0, -0.0, 1.1]
+              [-1.0, -1e-06, 0.0, 0.0]
+              [0.0, 0.0, 1.0, 0.425034]
+              [0.0, 0.0, 0.0, 1.0]
+            pose rotation_mode: XYZ
+            pose rotation_euler: <Euler (x=0.0000, y=-0.0000, z=0.0000), order='XYZ'>
+            pose matrix_basis:
+              [1.0, 0.0, 0.0, 0.0]
+              [0.0, 1.0, 0.0, 0.0]
+              [0.0, 0.0, 1.0, 0.0]
+              [0.0, 0.0, 0.0, 1.0]
+          --- joint_6 ---
+            head_local:  [1.153505, 0.0, 0.425034]
+            tail_local:  [1.189995, 0.0, 0.425034]
+            length:      0.036489
+            parent:      joint_5
+            connected:   True
+            x_axis:      [-0.0, -1.0, 0.0]
+            y_axis:      [1.0, 0.0, 0.0]
+            z_axis:      [-0.0, 0.0, 1.0]
+            matrix_local:
+              [-0.0, 1.0, -0.0, 1.153505]
+              [-1.0, 0.0, 0.0, -0.0]
+              [0.0, 0.0, 1.0, 0.425034]
+              [0.0, 0.0, 0.0, 1.0]
+            pose rotation_mode: XYZ
+            pose rotation_euler: <Euler (x=0.0000, y=-0.0000, z=0.0000), order='XYZ'>
+            pose matrix_basis:
+              [1.0, 0.0, 0.0, 0.0]
+              [0.0, 1.0, 0.0, 0.0]
+              [0.0, 0.0, 1.0, 0.0]
+              [0.0, 0.0, 0.0, 1.0]
+          --- tcp ---
+            head_local:  [1.189995, 0.0, 0.425034]
+            tail_local:  [1.289995, 0.0, 0.425034]
+            length:      0.1
+            parent:      joint_6
+            connected:   False
+            x_axis:      [-0.0, -1.0, 0.0]
+            y_axis:      [1.0, 0.0, 0.0]
+            z_axis:      [-0.0, 0.0, 1.0]
+            matrix_local:
+              [-0.0, 1.0, -0.0, 1.189995]
+              [-1.0, 0.0, 0.0, -0.0]
+              [0.0, 0.0, 1.0, 0.425034]
+              [0.0, 0.0, 0.0, 1.0]
+            pose rotation_mode: QUATERNION
+            pose rotation_euler: <Euler (x=0.0000, y=0.0000, z=0.0000), order='XYZ'>
+            pose matrix_basis:
+              [1.0, 0.0, 0.0, 0.0]
+              [0.0, 1.0, 0.0, 0.0]
+              [0.0, 0.0, 1.0, 0.0]
+              [0.0, 0.0, 0.0, 1.0]
+        [MESH] kr10r1100-2_twin_j1  parent=kr10r1100-2_twin  parent_bone=joint_1
+          location: [0.0, 0.0, 0.0]
+          rotation: <Euler (x=0.0000, y=0.0000, z=0.0000), order='XYZ'>  mode: XYZ
+          scale: [1.0, 1.0, 1.0]
+          verts: 8630  faces: 17193
+          matrix_parent_inverse row0: [1.0, -0.0, 0.0, -0.0]
+          matrix_parent_inverse row1: [-0.0, 0.0, 1.0, -0.4]
+          matrix_parent_inverse row2: [0.0, -1.0, 0.0, -0.0]
+          matrix_parent_inverse row3: [0.0, 0.0, -0.0, 1.0]
+          matrix_world row0: [1.0, 0.0, 0.0, 0.0]
+          matrix_world row1: [0.0, 1.0, 0.0, 0.0]
+          matrix_world row2: [0.0, 0.0, 1.0, 0.0]
+          matrix_world row3: [0.0, 0.0, 0.0, 1.0]
+        [MESH] kr10r1100-2_twin_j2  parent=kr10r1100-2_twin  parent_bone=joint_2
+          location: [0.025001, 0.0, 0.400009]
+          rotation: <Euler (x=-0.0000, y=1.5708, z=0.0000), order='XYZ'>  mode: XYZ
+          scale: [1.0, 1.0, 1.0]
+          verts: 8730  faces: 17456
+          matrix_parent_inverse row0: [-0.0, -1.0, 0.0, 0.0]
+          matrix_parent_inverse row1: [1.0, -0.0, -0.0, -0.585]
+          matrix_parent_inverse row2: [0.0, 0.0, 1.0, -0.4]
+          matrix_parent_inverse row3: [-0.0, 0.0, -0.0, 1.0]
+          matrix_world row0: [0.0, 0.0, 1.0, 0.025001]
+          matrix_world row1: [0.0, 1.0, 0.0, 0.0]
+          matrix_world row2: [-1.0, 0.0, 0.0, 0.400009]
+          matrix_world row3: [0.0, 0.0, 0.0, 1.0]
+        [MESH] kr10r1100-2_twin_j3  parent=kr10r1100-2_twin  parent_bone=joint_3
+          location: [0.584998, 0.0, 0.400009]
+          rotation: <Euler (x=0.0000, y=-0.0000, z=0.0000), order='XYZ'>  mode: XYZ
+          scale: [1.0, 1.0, 1.0]
+          verts: 2667  faces: 5281
+          matrix_parent_inverse row0: [-0.0, -1.0, 4.8e-05, -1.9e-05]
+          matrix_parent_inverse row1: [1.0, -0.0, -2.5e-05, -0.789995]
+          matrix_parent_inverse row2: [2.5e-05, 4.8e-05, 1.0, -0.400015]
+          matrix_parent_inverse row3: [-0.0, 0.0, -0.0, 1.0]
+          matrix_world row0: [1.0, -0.0, -0.0, 0.584998]
+          matrix_world row1: [-0.0, 1.0, -0.0, -0.0]
+          matrix_world row2: [0.0, 0.0, 1.0, 0.400009]
+          matrix_world row3: [0.0, 0.0, 0.0, 1.0]
+        [MESH] kr10r1100-2_twin_j4  parent=kr10r1100-2_twin  parent_bone=joint_4
+          location: [0.790005, 0.0, 0.425034]
+          rotation: <Euler (x=0.0000, y=-0.0000, z=0.0000), order='XYZ'>  mode: XYZ
+          scale: [1.0, 1.0, 1.0]
+          verts: 17666  faces: 35306
+          matrix_parent_inverse row0: [0.0, -0.999484, -0.032134, 0.013658]
+          matrix_parent_inverse row1: [1.0, 0.0, 0.0, -1.1]
+          matrix_parent_inverse row2: [0.0, -0.032134, 0.999484, -0.424814]
+          matrix_parent_inverse row3: [-0.0, -0.0, -0.0, 1.0]
+          matrix_world row0: [1.0, -0.0, -0.0, 0.790005]
+          matrix_world row1: [0.0, 1.0, -0.0, -0.0]
+          matrix_world row2: [0.0, 0.0, 1.0, 0.425034]
+          matrix_world row3: [0.0, 0.0, 0.0, 1.0]
+        [MESH] kr10r1100-2_twin_j5  parent=kr10r1100-2_twin  parent_bone=joint_5
+          location: [1.100006, 0.0, 0.425034]
+          rotation: <Euler (x=0.0000, y=-0.0000, z=0.0000), order='XYZ'>  mode: XYZ
+          scale: [1.0, 1.0, 1.0]
+          verts: 2961  faces: 5918
+          matrix_parent_inverse row0: [-1e-06, -1.0, -0.0, 1e-06]
+          matrix_parent_inverse row1: [1.0, -1e-06, 0.0, -1.153506]
+          matrix_parent_inverse row2: [-0.0, 0.0, 1.0, -0.425034]
+          matrix_parent_inverse row3: [-0.0, -0.0, -0.0, 1.0]
+          matrix_world row0: [1.0, -0.0, -0.0, 1.100006]
+          matrix_world row1: [0.0, 1.0, 0.0, 0.0]
+          matrix_world row2: [0.0, 0.0, 1.0, 0.425034]
+          matrix_world row3: [0.0, 0.0, 0.0, 1.0]
+        [MESH] kr10r1100-2_twin_j6  parent=kr10r1100-2_twin  parent_bone=joint_6
+          location: [1.189995, 0.0, 0.425034]
+          rotation: <Euler (x=0.0000, y=-0.0000, z=0.0000), order='XYZ'>  mode: XYZ
+          scale: [1.0, 1.0, 1.0]
+          verts: 1661  faces: 3318
+          matrix_parent_inverse row0: [0.0, -1.0, 0.0, -0.0]
+          matrix_parent_inverse row1: [1.0, -0.0, 0.0, -1.189995]
+          matrix_parent_inverse row2: [-0.0, 0.0, 1.0, -0.425034]
+          matrix_parent_inverse row3: [-0.0, -0.0, -0.0, 1.0]
+          matrix_world row0: [1.0, -0.0, -0.0, 1.189995]
+          matrix_world row1: [0.0, 1.0, 0.0, 0.0]
+          matrix_world row2: [0.0, 0.0, 1.0, 0.425034]
+          matrix_world row3: [0.0, 0.0, 0.0, 1.0]
+  [EMPTY] kr10r1100-2_twin_tcp
+    display: ARROWS  size: 0.100
+    location: [0.0, 0.0, 0.0]
+    rotation: <Euler (x=0.0000, y=0.0000, z=0.0000), order='XYZ'>  mode: XYZ
+======================================================================

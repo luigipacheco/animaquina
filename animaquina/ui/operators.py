@@ -113,6 +113,44 @@ def _slot_target_to_driver_pose(slot, target_obj):
     return rig_apply.world_waypoints_to_base_frame(slot, world_pose)[0]
 
 
+def _puppet_bounds_contains(slot, target_obj):
+    """Is the target inside the slot's work boundary?
+
+    Returns (inside, reason). `inside` is True when there is nothing to test -
+    no boundary set, or the check disabled - so callers can gate unconditionally.
+
+    Tested in the boundary object's local space, so a rotated or scaled box
+    works and the volume can be aligned to the cell rather than to world axes.
+    Only the target's origin is tested: this bounds a point, not the robot.
+    """
+    if not bool(getattr(slot, "puppet_bounds_enabled", True)):
+        return True, ""
+    box = getattr(slot, "puppet_bounds_object", None)
+    if box is None:
+        return True, ""
+
+    try:
+        local = box.matrix_world.inverted() @ target_obj.matrix_world.to_translation()
+    except Exception:
+        # A non-invertible boundary matrix means a zero-scaled object. Refuse to
+        # stream rather than silently ignoring the boundary the user set up.
+        return False, "work boundary has zero scale"
+
+    if box.type == "EMPTY":
+        half = abs(float(getattr(box, "empty_display_size", 1.0)))
+        lo = [-half] * 3
+        hi = [half] * 3
+    else:
+        corners = [tuple(c) for c in box.bound_box]
+        lo = [min(c[i] for c in corners) for i in range(3)]
+        hi = [max(c[i] for c in corners) for i in range(3)]
+
+    for i, axis in enumerate("XYZ"):
+        if not (lo[i] <= local[i] <= hi[i]):
+            return False, f"outside boundary on {axis}"
+    return True, ""
+
+
 UR_SENDPATH_WARN_POINTS = 10000
 UR_SENDPATH_HARD_LIMIT = 50000
 
@@ -1323,6 +1361,19 @@ class ANIMAQUINA_OT_RealTimePuppetStart(Operator):
             slot.realtime_puppet_status = "Puppet Mode: invalid target values"
             return {"PASS_THROUGH"}
 
+        # Work boundary. Checked before the max-step guard so that dragging far
+        # outside and back does not also read as a jump: _aq_last_target_mm only
+        # advances on a successful send, so the max-step guard still measures
+        # from the last pose the robot was actually given.
+        inside, why = _puppet_bounds_contains(slot, target)
+        if not inside:
+            if not slot.puppet_bounds_outside:
+                slot.puppet_bounds_outside = True
+            slot.realtime_puppet_status = f"Puppet Mode: {why}, holding last pose"
+            return {"PASS_THROUGH"}
+        if slot.puppet_bounds_outside:
+            slot.puppet_bounds_outside = False
+
         cur_mm = [vals[0] * 1000.0, vals[1] * 1000.0, vals[2] * 1000.0]
         max_step = max(0.0, float(getattr(slot, "realtime_puppet_max_step_mm", 50.0)))
         if self._aq_last_target_mm is not None and max_step > 0.0:
@@ -1397,6 +1448,60 @@ class ANIMAQUINA_OT_RealTimePuppetStart(Operator):
         driver = manager.get_driver_for_slot(slot) if slot is not None else None
         self._remove_timer(context)
         self._stop_driver(slot, driver)
+
+
+
+class ANIMAQUINA_OT_CreatePuppetBounds(Operator):
+    bl_idname = "animaquina.create_puppet_bounds"
+    bl_label = "Create Work Boundary"
+    bl_description = (
+        "Add a box that limits the streamed puppet target. Scale and place it "
+        "to match your safe working volume. Not a safety device"
+    )
+    bl_options = {"REGISTER", "UNDO"}
+
+    @classmethod
+    def poll(cls, context):
+        return get_active_slot(context) is not None
+
+    def execute(self, context):
+        slot = get_active_slot(context)
+        if slot is None:
+            return {"CANCELLED"}
+
+        # Centre on the robot base when we know it, so the box starts somewhere
+        # useful rather than at the world origin.
+        origin = (0.0, 0.0, 0.0)
+        for ref in ("base_object", "tcp_object"):
+            obj = getattr(slot, ref, None)
+            if obj is not None:
+                origin = tuple(obj.matrix_world.to_translation())
+                break
+
+        name = f"{slot.name}_bounds" if getattr(slot, "name", "") else "animaquina_bounds"
+        bpy.ops.mesh.primitive_cube_add(size=1.0, location=origin)
+        box = context.active_object
+        box.name = name
+        box.display_type = "WIRE"
+        box.hide_render = True
+        box.show_in_front = True
+        # A boundary is a reference volume, never geometry to be exported,
+        # collided against, or rendered.
+        box.visible_camera = False
+        box.visible_shadow = False
+
+        # Park it with the robot so it travels with the rig, as the rest of the
+        # slot's objects do.
+        rig_col = getattr(slot, "rig_collection", None)
+        if rig_col is not None:
+            for col in list(box.users_collection):
+                col.objects.unlink(box)
+            rig_col.objects.link(box)
+
+        slot.puppet_bounds_object = box
+        slot.puppet_bounds_enabled = True
+        self.report({"INFO"}, f"Created '{name}' - scale it to your safe working volume")
+        return {"FINISHED"}
 
 
 class ANIMAQUINA_OT_RealTimePuppetStop(Operator):
@@ -5512,6 +5617,7 @@ class ANIMAQUINA_OT_UnregisterRobotLibrary(Operator):
 
 OPERATOR_CLASSES = [
     ANIMAQUINA_OT_RegisterRobotLibrary,
+    ANIMAQUINA_OT_CreatePuppetBounds,
     ANIMAQUINA_OT_UnregisterRobotLibrary,
     ANIMAQUINA_OT_AddSlot,
     ANIMAQUINA_OT_RemoveSlot,
