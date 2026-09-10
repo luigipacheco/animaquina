@@ -1,0 +1,20 @@
+# Animaquina — Multi-robot control and toolpathing for Blender
+# https://www.animaquina.com
+# Schema: https://developer.blender.org/docs/features/extensions/schema/1.0.0
+
+schema_version = "1.0.0"
+id = "animaquina"
+version = "0.1.0"
+name = "Animaquina"
+tagline = "Interactive Robot Development Environment"
+type = "add-on"
+maintainer = "Luis Arturo Pacheco"
+license = ["SPDX:GPL-3.0-or-later"]
+# Blender 5.2 LTS (Python 3.13) — the bundled native deps (vendor_py,
+# including the patched ur_rtde build) are compiled for cp313 only.
+blender_version_min = "5.2.0"
+
+# Optional
+website = "https://www.animaquina.com"
+description = "Connect to industrial/collaborative robots, sync with a digital twin, send paths, and export robot programs."
+warning = "Beta — use at your own risk."

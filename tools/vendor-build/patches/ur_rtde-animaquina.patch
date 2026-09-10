@@ -1,0 +1,17 @@
+diff --git a/src/script_client.cpp b/src/script_client.cpp
+index a4c3260..72e6189 100644
+--- a/src/script_client.cpp
++++ b/src/script_client.cpp
+@@ -197,7 +197,11 @@ bool ScriptClient::scanAndInjectAdditionalScriptCode(std::string& ur_script)
+     if (verbose_)
+     {
+       std::cout << "script_injection [" << script_injection.search_string << "] found at pos " << n << std::endl;
+-      std::cout << ur_script.substr(n - 100, n + script_injection.search_string.length() +
++      // ANIMAQUINA PATCH: guard against unsigned underflow when the injection
++      // point is within the first 100 characters of the script (crashes with
++      // an access violation / out_of_range otherwise).
++      const std::size_t ctx_begin = (n > 100) ? (n - 100) : 0;
++      std::cout << ur_script.substr(ctx_begin, (n - ctx_begin) + script_injection.search_string.length() +
+                                                  script_injection.inject_string.length() + 100)
+                 << std::endl;
+     }

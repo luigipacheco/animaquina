@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.venv/
+venv/
+env/
+
+# Compiled/vendored binaries — rebuild with tools/vendor-build/
+animaquina/vendor_py/
+
+# Blender
+*.blend1
+*.blend2
+
+# Build output
+dist/
+build/
+*.zip
+
+# OS / IDE / assistant scratch
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/
+.idea/
+.cursor/
+.claude/

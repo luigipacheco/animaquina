@@ -1,0 +1,7 @@
+* text=auto eol=lf
+*.png binary
+*.blend binary
+*.stl binary
+*.dae binary
+*.pyd binary
+*.dll binary
