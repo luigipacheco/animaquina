@@ -8,9 +8,9 @@ check it here first.
 
 | Component | Upstream | Licence | Notes |
 |---|---|---|---|
-| `math3d` (PyMath3D) | Morten Lind | LGPL-3.0 | Compatible: LGPL-3 may be used inside a GPL-3 work. |
-| `urx` | Olivier Roulet-Dubonnet | LGPL-3.0 | Legacy UR fallback backend. `ur_rtde` is preferred. |
-| `xarm` (xArm-Python-SDK) | UFACTORY, Inc. | BSD-3-Clause | Per-file headers read "Software License Agreement (BSD License), Copyright (c) 2018, UFACTORY, Inc." The vendored copy is missing the top-level `LICENSE` file - copy it from upstream into `animaquina/libs/xarm/` to complete the attribution. |
+| `math3d` (PyMath3D) | Morten Lind | LGPL-3.0 | Licence text at `animaquina/libs/math3d/LICENSE`. Compatible: LGPL-3 may be used inside a GPL-3 work. |
+| `urx` | Olivier Roulet-Dubonnet | LGPL-3.0 | Licence text at `animaquina/libs/urx/LICENSE`. Legacy UR fallback backend; `ur_rtde` is preferred. |
+| `xarm` (xArm-Python-SDK) v1.17.6 | UFACTORY, Inc. | BSD-3-Clause | Licence text at `animaquina/libs/xarm/LICENSE`, taken from [upstream](https://github.com/xArm-Developer/xArm-Python-SDK). Per-file headers carry the copyright notice, satisfying clause 1. |
 
 ## Built into `animaquina/vendor_py/` (not committed — see `tools/vendor-build/`)
 
@@ -24,26 +24,45 @@ check it here first.
 Rebuild it with the scripts in `tools/vendor-build/`. The long-term plan is to
 ship these as Blender extension wheels declared in `blender_manifest.toml`.
 
-## Robot models and geometry — not yet included
+## Robot models and geometry — not in this repository
 
-Robot meshes, rigs (`robots.blend`), and the KUKA URDF/xacro descriptions from
-the previous private repository are **deliberately absent from this repository**
-pending a provenance and redistribution review.
+Robot meshes and rigs (`robots.blend`) are **not committed here**. They ship as a
+separate release asset so the add-on stays small and so the code's licensing stays
+unambiguous — a GPL-3 add-on zip should not imply a GPL-3 grant over geometry the
+project does not own outright.
 
-They derive from manufacturer CAD and from ROS-Industrial packages
-(`kuka_agilus_support` and related). Shipping them to a handful of labs under a
-beta agreement is a different act from publishing them worldwide. Before adding
-them here, confirm for each asset:
+### Origin
 
-- the upstream package and its licence (ROS-Industrial packages are typically
-  Apache-2.0 or BSD-3-Clause — record which, and include the upstream
-  `LICENSE` and `package.xml`),
-- whether the manufacturer permits redistribution of the underlying CAD-derived
-  geometry, and
-- attribution for anything modified.
+The KUKA, xArm and UFACTORY models originate as **STEP/CAD files downloaded from
+the manufacturers' own websites**. For each robot they were exported to mesh,
+cleaned up, and rigged as a Blender armature (`joint_1`..`joint_6`, with the
+Animaquina axis mapping) by Luis Arturo Pacheco.
 
-Once cleared, add them under `assets/` with a per-source `README` recording
-origin, licence, and any modifications.
+They are **not** derived from ROS-Industrial or any other open-source robot
+description package, so no third-party open-source licence obligations attach to
+them.
+
+### Licence
+
+The rig work — the export and cleanup, the armatures, the `joint_1`..`joint_6`
+bone convention, and the per-joint axis mapping — is original work of this
+project and is licensed **[CC-BY-4.0](LICENSES/CC-BY-4.0.txt)**.
+
+Attribute it as:
+
+> Animaquina robot rigs by Luis Arturo Pacheco, licensed CC BY 4.0.
+> https://github.com/luigipacheco/animaquina
+
+The underlying geometry remains the manufacturers'. Original work on top of a CAD
+model does not extinguish rights in the model it derives from, so the CC-BY-4.0
+grant covers this project's contribution and cannot grant more than the project
+holds. Each vendor's CAD terms of use still govern the geometry itself.
+
+Redistributing vendor robot geometry is common across the ecosystem — ROS
+description packages, offline programming suites and CAD plugins all ship it, and
+vendors generally welcome what makes their robots easier to specify and buy.
+A written confirmation from KUKA and UFACTORY is still worth having on file;
+record it here if you obtain it.
 
 ## Protocols
 

@@ -349,8 +349,11 @@ To use them:
 You can also skip the library entirely: bind any armature whose bones are named
 `joint_1`..`joint_6` and set the per-joint axis mapping in the Rig panel.
 
-> Assets are not in this repository yet, pending the redistribution review
-> described in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+The rigs were built from manufacturer STEP/CAD downloads, exported to mesh,
+cleaned up and rigged for this project. That rig work is licensed
+**[CC-BY-4.0](LICENSES/CC-BY-4.0.txt)** — attribute it as *"Animaquina robot rigs
+by Luis Arturo Pacheco, licensed CC BY 4.0"*. The underlying geometry remains the
+manufacturers'; see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
 ## Contributing
 
@@ -369,13 +372,27 @@ Contributions are welcome, especially:
 
 By contributing you agree your work is licensed GPL-3.0-or-later.
 
-## Licence
+## Licences
 
 Copyright (C) 2026 Luis Arturo Pacheco.
 
 Animaquina is free software under the [GNU General Public License v3.0 or
-later](LICENSE). It comes with **ABSOLUTELY NO WARRANTY** — see sections 15 and
-16 of the licence, and [SAFETY.md](SAFETY.md).
+later](LICENSE). It comes with **ABSOLUTELY NO WARRANTY** — see sections 15 and 16
+of the licence, and [SAFETY.md](SAFETY.md).
 
-Bundled third-party components and their licences are listed in
+| What | Licence | Text |
+|---|---|---|
+| Animaquina add-on and core | GPL-3.0-or-later | [LICENSE](LICENSE) |
+| `math3d` (PyMath3D) — Morten Lind | LGPL-3.0 | [`animaquina/libs/math3d/LICENSE`](animaquina/libs/math3d/LICENSE) |
+| `urx` — Olivier Roulet-Dubonnet | LGPL-3.0 | [`animaquina/libs/urx/LICENSE`](animaquina/libs/urx/LICENSE) |
+| [xArm-Python-SDK](https://github.com/xArm-Developer/xArm-Python-SDK) — UFACTORY, Inc. | BSD-3-Clause | [`animaquina/libs/xarm/LICENSE`](animaquina/libs/xarm/LICENSE) |
+| `ur_rtde` (built into `vendor_py/`, not committed) | MIT | see [`tools/vendor-build/`](tools/vendor-build/README.md) |
+| `paramiko` and its dependencies (built into `vendor_py/`) | LGPL-2.1 / Apache-2.0 / BSD / MIT | shipped `*.dist-info/LICENSE` |
+| Robot rigs and cleanup (separate download) | CC-BY-4.0, over manufacturer CAD | [`LICENSES/CC-BY-4.0.txt`](LICENSES/CC-BY-4.0.txt) |
+
+Full details, including the provenance of the robot geometry, are in
 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+
+The KUKA driver talks to a variable server (KUKAVARPROXY / C3 Bridge) that runs on
+the robot controller. That server is **not** part of Animaquina, is not
+distributed here, and carries its own licence — you install it yourself.
