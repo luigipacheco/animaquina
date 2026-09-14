@@ -1,5 +1,7 @@
 # Animaquina — User Guide
 
+**Version:** 0.1.0 beta · **Blender:** 5.2 LTS
+
 **Animaquina** is a Blender add-on for controlling industrial robots directly from the 3D viewport. It gives you:
 
 - a **live digital twin** — the 3D robot model mirrors the real robot in real time
@@ -9,7 +11,7 @@
 
 Supported robots: **Universal Robots** (UR3–UR30, e-Series / PolyScope 5 / PolyScope X), **KUKA** (via C3 Bridge), and **UFactory xArm / UF850**.
 
-> **This is a beta build for Blender 5.2 LTS.** Expect rough edges. Read the [Safety & Beta Terms](#safety--beta-terms) section before connecting to real hardware.
+> **This is a beta build for Blender 5.2 LTS.** Expect rough edges. Read [SAFETY.md](SAFETY.md) before connecting to real hardware.
 
 ## 💬 Support & Community
 
@@ -70,7 +72,7 @@ there, you are ready. If the add-on fails to enable, see [Troubleshooting](#trou
 
 | Robot | What to do |
 |-------|------------|
-| **Universal Robots** | The real-time driver (`ur_rtde`) is **bundled — do not install it yourself** (the bundled build is patched for PolyScope X; the stock pip package breaks it). Only if you use SFTP program upload: open **Debug > Dependencies** and click **Install UR Dependencies** (installs `paramiko`), then restart Blender. |
+| **Universal Robots** | Native RTDE features require this project's patched `ur_rtde` build for Python 3.13, included only in packages built with those native dependencies. Pure-Python builds use the bundled URX fallback. Inspect **Debug > Dependencies**; SFTP also needs `paramiko`. |
 | **KUKA** | Nothing to install in Blender. The controller runs the C3 Bridge server (see [KUKA Setup](#kuka-setup)). |
 | **xArm / UFactory** | Open **Debug > Dependencies**, click **Install xArm Dependencies**, then restart Blender. |
 
@@ -82,7 +84,8 @@ The robot rigs are a **separate download** from the add-on - they are large and
 update on their own schedule.
 
 1. Download `animaquina-robots-<version>.zip` from the releases page.
-2. Unzip it anywhere (e.g. `Documents\Animaquinaobots\`).
+2. Unzip it anywhere (e.g. `Documents\Animaquina
+obots\`).
 3. **Edit > Preferences > Add-ons > Animaquina** -> set **Robot Library Folder**
    to that folder -> click **Register Robot Library**.
 4. Open an **Asset Browser**, choose **Animaquina Robots**, and drag your robot
@@ -261,7 +264,13 @@ With the **PhyNodes** add-on installed you can broadcast any per-point attribute
 3. Add a **Geometry Attribute** node, choose the toolpath object and attribute, **untick "All Elements"**, and wire the Index output into its Index socket.
 4. Wire the result into an **MQTT PUB** node.
 
-One index drives any number of attributes — add another Geometry Attribute + PUB pair per attribute. Gate the PUB with the index node's **Running** output so nothing is published while idle. Enable **Announce as FabNode** on the PhyNodes connection and Blender appears in FabFlow as a `fab-blender` node with each topic as a port. See the PhyNodes README for the full walkthrough.
+One index drives any number of attributes — add another Geometry Attribute +
+PUB pair per attribute. **Running includes simulation**. A PhyNodes Switch
+selects a fallback value, which is still published; it does not disable PUB.
+PUB currently has no dedicated enable input. To stop publishing, disable the
+graph or disconnect the relevant connection, and separately arrange the
+device's off command or configured hold. Enable **Announce as FabNode** to
+expose Blender's topics in FabFlow. See the PhyNodes README for current limits.
 
 ### Write Point Index — progress from an exported program
 
@@ -274,7 +283,11 @@ A program exported and started on the controller runs on its own — to get the 
 3. Stay connected with **Polling** on, and add the same name (`IDX` / `output_int_register_0`) to the **Variables** panel — that is what tells Animaquina to poll it.
 4. The Debug panel now shows `Run [PROGRAM]` with the live index, and `run_idx` updates for PhyNodes and scripts.
 
-💡 The index is sampled at the poll rate (default 25 Hz), so on fast or dense paths some points may be skipped between samples. For exact per-point behavior — including attribute dispatch on every waypoint — prefer **Run Toolpath Buffered**, where Animaquina itself feeds each point.
+The index is sampled at the poll rate (default 25 Hz), so fast or dense paths
+can advance several points between samples. Buffered streaming feeds points
+to the robot, but an external PhyNodes/MQTT graph still samples the latest
+cursor. It does not guarantee every point event; use controller/device-side
+execution or an acknowledged event mechanism when each event must occur.
 
 ⚠️ **KUKA note:** a plain assignment executes in the controller's *advance run*, so it can lead the physical TCP by a few points. Animaquina writes the index as a point-synchronized `TRIGGER`, which keeps it aligned with the motion.
 
@@ -355,7 +368,7 @@ Post in the Discord: **https://discord.gg/pM2cauqadZ**
 Please include:
 
 1. Blender version and robot type/model
-2. a screenshot of the **License** panel
+2. the installed add-on version and a screenshot of the relevant robot settings
 3. the exact error message (check **Window > Toggle System Console** for the full traceback)
 4. for UR issues: the **UR Debug Status** output
 5. what you were doing when it happened (steps to reproduce, if possible)

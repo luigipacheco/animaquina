@@ -11,13 +11,17 @@ A Blender add-on for multi-robot control, digital twin visualization, interactiv
 
 **Version:** 0.1.0 (Beta) · **Blender:** 5.2 LTS · **Licence:** [GPL-3.0-or-later](LICENSE) · **Author:** Luis Arturo Pacheco
 
+Works with GeoSlicer for attributed toolpaths and PhyNodes for sensor and
+end-effector signals. See the [user guide](USER-README.md) for setup and
+examples.
+
 ## Supported Robots
 
-| Brand | Models | Protocol | Status |
-|-------|--------|----------|--------|
-| **Universal Robots** | UR3/5/10/16/20/30 | RTDE (preferred), URX (fallback) | Stable |
-| **KUKA** | KR10, KR30, KR120 | Socket KRL (kukaproxydriver) | Stable |
-| **xArm / UFactory** | xArm 6, UF850 | xArm Python SDK | Stable |
+| Brand | Models | Protocol |
+|-------|--------|----------|
+| **Universal Robots** | UR3/5/10/16/20/30 | RTDE (preferred), URX (fallback) |
+| **KUKA** | KR10, KR30, KR120 | Socket KRL (kukaproxydriver) |
+| **xArm / UFactory** | xArm 6, UF850 | xArm Python SDK |
 
 ## Features
 
@@ -338,8 +342,8 @@ works on the bundled `urx` backend, and `ur_rtde` features are unavailable.
 Python version, and Blender pins one Python per release (4.2–4.5 → 3.11/`cp311`,
 5.x → 3.13/`cp313`).
 
-`ur_rtde` publishes **no `cp313` wheels for any version**, so Blender 5.x requires
-compiling from source. See [`tools/vendor-build/README.md`](tools/vendor-build/README.md)
+This project's native UR backend uses a separately built `cp313` package for
+Blender 5.2. Supply an artifact matching the target interpreter. See [`tools/vendor-build/README.md`](tools/vendor-build/README.md)
 — note that the build targets a **python.org** interpreter, because Blender's
 bundled Python ships no `Python.h`. The resulting `cp313` `.pyd` loads in Blender
 regardless.
@@ -385,8 +389,7 @@ Contributions are welcome, especially:
 - **Blender extension wheels** — replacing the runtime pip install and the
   hand-built `vendor_py/` bundle.
 - **Path validation** — the current validator has documented gaps; see
-  [SAFETY.md](SAFETY.md) and the
-  [roadmap](docs/plans/robot-ide-roadmap-2026-09-09.md).
+  [SAFETY.md](SAFETY.md).
 - **Old controllers.** If you have a KRC2, KRC4, or anything else the vendors
   stopped caring about, bug reports from real hardware are the most valuable
   thing you can send.
